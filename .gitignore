@@ -113,9 +113,6 @@ output/
 *.pdparams
 
 # dataset
-datasets/
-VOCdevket/
-eval/
 
 # overfitting test
 

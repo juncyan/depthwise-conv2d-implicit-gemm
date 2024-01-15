@@ -12,10 +12,6 @@ from work.train import train
 from common import Args
 from models.dacdnet.DACDNet import DCDNet_v1, ACDNet_v3
 from models.dacdnet.abli import ACDNet
-from models.f3net import F3Net
-from models.f3net.UAlibaltion import LKAUChangeST, LKAUChange_noPPM
-from models.msfgnet import MSFGNet
-from models.msfgnet.ablation import MSFGNet_noBMF, MSFGNet_ViT
 
 # 参数、优化器及损失
 batch_size = 4
@@ -32,7 +28,7 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
 # res = ResNet50_vd()
-# model = UNet(num_classes, in_channels=6)
+model = UNet(num_classes, in_channels=6)
 # model = UNetPlusPlus(num_classes, 6)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
@@ -46,7 +42,6 @@ num_classes = 2
 # model = FCCDN(3,2)
 # model = LKAUChangeST(6,2)
 # model = LKAUChange_noPPM(6,2)
-model = F3Net_CLCD3()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

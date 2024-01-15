@@ -3,7 +3,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddleseg.models import layers
 
-from models.dacdnet.encoder import LKBlock, ConvFFN, FDModule
+from .encoder import LKBlock, ConvFFN, FDModule
 
 
 class ACDNet(nn.Layer):

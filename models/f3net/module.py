@@ -4,8 +4,8 @@ import paddle.nn.functional as F
 import paddleseg.models.layers as layers
 
 
-class FSA(nn.Layer):
-    # Large kernels feature fusion
+class FFA(nn.Layer):
+    # feature fusing and aggregation
     def __init__(self, in_channels, kernels=7):
         super().__init__()
         dims = in_channels * 2

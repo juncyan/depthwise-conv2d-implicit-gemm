@@ -3,25 +3,25 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddleseg.models import layers
 
-from .module import FSA, CFDF
+from .module import FFA, CFDF
 
-class F3Net_CLCD3(nn.Layer):
+class F3Net(nn.Layer):
     def __init__(self,in_channels=6, num_classes=2):
         super().__init__()
-        kernels = 3
+        kernels = 7
         self.in_channels = in_channels
         self.encode1 = backbone(3)#(3, 34)
         self.encode2 = backbone(3)
 
-        self.lkff1 = BTF(64)#FSA(64,kernels)
-        self.lkff2 = BTF(128)#FSA(128,kernels)
-        self.lkff3 = BTF(256)#FSA(256,kernels)
-        self.lkff4 = BTF(512)#FSA(512,kernels)
+        self.lkff1 = FFA(64,kernels)
+        self.lkff2 = FFA(128,kernels)
+        self.lkff3 = FFA(256,kernels)
+        self.lkff4 = FFA(512,kernels)
 
         self.ppm = layers.attention.PAM(512)
 
         self.up1 = CFDF(1024, 256, kernels)
-        self.up2 = Up(512,128)#CFDF(512, 128, kernels)
+        self.up2 = CFDF(512, 128, kernels)
         self.up3 = Up(256, 64)
         self.up4 = Up(128, 64)
 

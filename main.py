@@ -12,7 +12,7 @@ from work.train import train
 from common import Args
 from models.dacdnet.DACDNet import DCDNet_v1, ACDNet_v3
 from models.dacdnet.abli import ACDNet
-from models.f3net import F3Net_CLCD3
+from models.f3net import F3Net
 from models.f3net.UAlibaltion import LKAUChangeST, LKAUChange_noPPM
 from models.msfgnet import MSFGNet
 from models.msfgnet.ablation import MSFGNet_noBMF, MSFGNet_ViT

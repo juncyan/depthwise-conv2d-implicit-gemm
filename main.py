@@ -10,11 +10,10 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from dacdnet.modules import DCDNet_v1, ACDNet_v3
-from dacdnet.model import ACDNet
+from dacdnet.ablation import PSLKNet
 
 # 参数、优化器及损失
-batch_size = 4
+batch_size = 8
 iters = 200 #epochs * 445 // batch_size
 base_lr = 2e-4
 
@@ -28,7 +27,7 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
 # res = ResNet50_vd()
-model = UNet(num_classes, in_channels=6)
+# model = UNet(num_classes, in_channels=6)
 # model = UNetPlusPlus(num_classes, 6)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
@@ -40,8 +39,7 @@ model = UNet(num_classes, in_channels=6)
 # model = STANet(3,2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
-# model = LKAUChangeST(6,2)
-# model = LKAUChange_noPPM(6,2)
+model = PSLKNet()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)
@@ -49,7 +47,7 @@ args.batch_size = batch_size
 args.num_classes = num_classes
 args.pred_idx = 0
 args.data_name = dataset_name
-args.img_ab_concat = True
+args.img_ab_concat = False
 args.en_load_edge = False
 
 def seed_init(seed=32767):

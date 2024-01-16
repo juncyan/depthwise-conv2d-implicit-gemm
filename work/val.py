@@ -115,7 +115,7 @@ def evaluate(model, eval_dataset, args=None):
         # infor = "[EVAL] mIoU: {:.4f} Acc: {:.4f} Kappa: {:.4f} mdice: {:.4f} Macro_F1: {:.4f}".format(
         #      miou, acc, kappa, mdice, macro_f1)
         # args.logger.info(infor)
-        args.logger.info("[METRICS] Acc:{:.4},mIoU:{:.4}, recall:{:.4},kappa:{:.4},Macro_f1:{:.4}".format(
+        args.logger.info("[METRICS] Acc:{:.4}, mIoU:{:.4}, recall:{:.4},kappa:{:.4},Macro_f1:{:.4}".format(
             acc,miou,recall,kappa,macro_f1))
         
         args.logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))

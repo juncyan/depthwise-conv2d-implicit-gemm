@@ -6,13 +6,13 @@ from paddleseg.models import layers
 from .blocks import *
 
 
-class LKPSNet(nn.Layer):
+class PSLKNet(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=7):
         super().__init__()
         self.conv = layers.ConvBNPReLU(2 * in_channels, in_channels, 3)
-        self.stage1 = STAGE1(in_channels, 64)
-        self.stage2 = STAGE1(64, 128)
+        self.stage1 = STAGE2(in_channels, 64, kernels)
+        self.stage2 = STAGE2(64, 128, kernels)
         self.stage3 = STAGE2(128, 256, kernels)
         self.stage4 = STAGE2(256,512, kernels)
 

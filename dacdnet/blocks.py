@@ -6,15 +6,15 @@ import paddleseg.models.layers as layers
 
 class BFIB(nn.Layer):
     #bi-temporal feature integrating block
-    def __init__(self, in_channels, out_channels, kernels = 7):
+    def __init__(self, in_channels, out_channels, kernels = 7, stride=2):
         super().__init__()
-        self.reduce = layers.ConvBNReLU(in_channels, in_channels, 3, stride = 2)
         self.fe = LKFE(in_channels, kernels)
-        self.ce = LKCE(in_channels, out_channels, kernels)
+        
+        self.ce = LKCE(in_channels, out_channels, kernels, stride)
         
     def forward(self, x):
-        y = self.reduce(x)
-        y = self.fe(y)
+        y = self.fe(x)
+        
         y = self.ce(y)
         return y
 
@@ -23,10 +23,10 @@ class PSBFA(nn.Layer):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.reduce1 = layers.ConvBNReLU(in_channels, in_channels, 3, stride=2)
-        self.b1 = layers.ConvBNAct(in_channels, out_channels, 3, act_type="gelu")
+        self.b1 = layers.ConvBNReLU(in_channels, out_channels, 3)
 
         self.reduce2 = layers.ConvBNReLU(in_channels, in_channels, 3, stride=2)
-        self.b2 = layers.ConvBNAct(in_channels, out_channels, 3, act_type="gelu")
+        self.b2 = layers.ConvBNReLU(in_channels, out_channels, 3)
     
     def forward(self, x1, x2):
         y1 = self.reduce1(x1)
@@ -40,13 +40,15 @@ class PSBFA(nn.Layer):
 class UpBlock(nn.Layer):
     def __init__(self, in_channels, out_channels):
         super().__init__() 
-        self.cam = layers.attention.CAM(in_channels)
+        self.cam = nn.Sequential(layers.DepthwiseConvBN(in_channels, in_channels, 7)#layers.attention.CAM(in_channels)
+                                 ,nn.GELU())
         self.double_conv = nn.Sequential(
             layers.ConvBNReLU(in_channels, out_channels, 3),
             layers.ConvBNReLU(out_channels, out_channels, 3))
 
     def forward(self, x1, x2):
-        x1 = F.interpolate(x1,paddle.shape(x2)[2:],mode='bilinear')
+        if x1.shape != x2.shape:
+            x1 = F.interpolate(x1,paddle.shape(x2)[2:],mode='bilinear')
         x = paddle.concat([x1, x2], axis=1)
         x = self.cam(x)
         x = self.double_conv(x)
@@ -56,11 +58,11 @@ class LKFE(nn.Layer):
     #large kernel feature extraction
     def __init__(self, in_channels, kernels = 7):
         super().__init__()
-        self.conv1 = layers.ConvBNAct(in_channels, 4 * in_channels, 3, act_type="gelu")
-        self.dwc = nn.Sequential(layers.DepthwiseConvBN(4 * in_channels, 4 * in_channels, kernels),
+        self.conv1 = layers.ConvBNReLU(in_channels, 2 * in_channels, 3,)
+        self.dwc = nn.Sequential(layers.DepthwiseConvBN(2 * in_channels, 2 * in_channels, kernels),
                                  nn.GELU())
-        self.conv2 = layers.ConvBNAct(4 * in_channels, in_channels, 3, act_type="gelu")
-        self.ba = nn.Sequential(nn.BatchNorm2D(in_channels), nn.GELU())
+        self.conv2 = layers.ConvBNReLU(2 * in_channels, in_channels, 3,)
+        self.ba = nn.Sequential(nn.BatchNorm2D(in_channels), nn.ReLU())
 
     def forward(self, x):
         m = self.conv1(x)
@@ -71,20 +73,42 @@ class LKFE(nn.Layer):
     
 class LKCE(nn.Layer):
     #large kernel channel expansion
-    def __init__(self, in_channels, out_channels, kernels = 7):
+    def __init__(self, in_channels, out_channels, kernels = 7, stride=1):
         super().__init__()
-        self.conv1 = layers.ConvBNReLU(in_channels, out_channels, 3)
+        self.conv1 = layers.ConvBNReLU(in_channels, 4*in_channels, 3)
 
-        self.conv2 = layers.ConvBNReLU(out_channels, out_channels * 2, 3)
-        self.dwc = nn.Sequential(layers.DepthwiseConvBN(out_channels * 2, out_channels * 2, kernels),
+        self.dwc = nn.Sequential(layers.DepthwiseConvBN(4*in_channels, 4*in_channels, kernels, stride=stride),
                                  nn.GELU())
-        self.conv3 = layers.ConvBNReLU(out_channels * 2, out_channels, 3)
-        self.ba = nn.Sequential(nn.BatchNorm2D(out_channels), nn.GELU())
+        self.conv3 = layers.ConvBNReLU(4*in_channels, out_channels, 3)
+       
 
     def forward(self, x):
         y = self.conv1(x)
-        m = self.conv2(y)
-        m = self.dwc(m)
+        m = self.dwc(y)
         m = self.conv3(m)
-        z = y + m
-        return self.ba(z)
+        return m
+
+class BII(nn.Layer):
+    #bi-temporal images integration
+    def __init__(self, in_channels, out_channesl, kernels=7):
+        super().__init__()
+        self.conv1 = layers.DepthwiseConvBN(in_channels, in_channels, kernels, stride=2)
+        self.conv2 = layers.DepthwiseConvBN(in_channels, in_channels, kernels, stride=2)
+        self.reduce = nn.Sequential(nn.GELU(),
+                                    layers.ConvBNReLU(in_channels * 2, out_channesl, 1))
+
+        self.cbr1 = layers.ConvBNReLU(out_channesl, 2*out_channesl, 3)
+        self.dws = nn.Sequential(layers.DepthwiseConvBN(2*out_channesl, 2*out_channesl, kernels)
+                                ,nn.GELU())
+        self.cbr2 = layers.ConvBNReLU(2*out_channesl, out_channesl, 3)
+
+    def forward(self, x1, x2):
+        y1 = self.conv1(x1)
+        y2 = self.conv2(x2)
+        ym = paddle.concat([y1, y2], 1)
+
+        ym = self.reduce(ym)
+        y = self.cbr1(ym)
+        y = self.dws(y)
+        y = self.cbr2(y)
+        return y

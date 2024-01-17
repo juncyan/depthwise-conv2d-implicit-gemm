@@ -12,12 +12,12 @@ class DataReader(Dataset):
     # 这里的transforms、num_classes和ignore_index需要，避免PaddleSeg在Eval时报错
     def __init__(self, dataset_path, mode, load_edge = False, en_concat = True):
         
-        self.data_dir = dataset_path
+        self.data_dir = os.path.join(dataset_path, mode) #dataset_path
 
         self.load_edge = load_edge
         self.en_concat = en_concat
 
-        self.data_list = self._get_list(os.path.join(dataset_path, f"{mode}_list.txt"))
+        self.data_list = self._get_list(self.data_dir)
         self.data_num = len(self.data_list)
 
         self.label_info = pd.read_csv(os.path.join(dataset_path, 'label_info.csv'))
@@ -94,10 +94,10 @@ class DataReader(Dataset):
 
     # 这个用于把list.txt读取并转为list
     def _get_list(self, list_path):
-        data_list = None
-        with open(list_path, 'r') as f:
-            data_list = f.read().split('\n')[:-1]
-        return data_list
+        # data_list = None
+        # with open(list_path, 'r') as f:
+        #     data_list = f.read().split('\n')[:-1]
+        # return data_list
         data_list = os.listdir(os.path.join(list_path,'A'))
         return data_list
 

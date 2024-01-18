@@ -61,12 +61,14 @@ class LKFE(nn.Layer):
         self.conv1 = layers.ConvBNReLU(in_channels, 2 * in_channels, 3,)
         self.dwc = nn.Sequential(layers.DepthwiseConvBN(2 * in_channels, 2 * in_channels, kernels),
                                  nn.GELU())
+        self.se = SEModule(2 * in_channels, 8)
         self.conv2 = layers.ConvBNReLU(2 * in_channels, in_channels, 3,)
         self.ba = nn.Sequential(nn.BatchNorm2D(in_channels), nn.ReLU())
 
     def forward(self, x):
         m = self.conv1(x)
         m = self.dwc(m)
+        m = self.se(m)
         m = self.conv2(m)
         y = x + m
         return self.ba(y)
@@ -75,11 +77,11 @@ class LKCE(nn.Layer):
     #large kernel channel expansion
     def __init__(self, in_channels, out_channels, kernels = 7, stride=1):
         super().__init__()
-        self.conv1 = layers.ConvBNReLU(in_channels, 4*in_channels, 3)
+        self.conv1 = layers.ConvBNReLU(in_channels, 2*in_channels, 3)
 
-        self.dwc = nn.Sequential(layers.DepthwiseConvBN(4*in_channels, 4*in_channels, kernels, stride=stride),
+        self.dwc = nn.Sequential(layers.DepthwiseConvBN(2*in_channels, 2*in_channels, kernels, stride=stride),
                                  nn.GELU())
-        self.conv3 = layers.ConvBNReLU(4*in_channels, out_channels, 3)
+        self.conv3 = layers.ConvBNReLU(2*in_channels, out_channels, 3)
        
 
     def forward(self, x):
@@ -92,23 +94,43 @@ class BII(nn.Layer):
     #bi-temporal images integration
     def __init__(self, in_channels, out_channesl, kernels=7):
         super().__init__()
-        self.conv1 = layers.DepthwiseConvBN(in_channels, in_channels, kernels, stride=2)
-        self.conv2 = layers.DepthwiseConvBN(in_channels, in_channels, kernels, stride=2)
-        self.reduce = nn.Sequential(nn.GELU(),
-                                    layers.ConvBNReLU(in_channels * 2, out_channesl, 1))
-
-        self.cbr1 = layers.ConvBNReLU(out_channesl, 2*out_channesl, 3)
-        self.dws = nn.Sequential(layers.DepthwiseConvBN(2*out_channesl, 2*out_channesl, kernels)
-                                ,nn.GELU())
-        self.cbr2 = layers.ConvBNReLU(2*out_channesl, out_channesl, 3)
-
+        self.conv1 = layers.DepthwiseConvBN(in_channels, in_channels, kernels)
+        self.conv2 = layers.DepthwiseConvBN(in_channels, in_channels, kernels)
+        self.reduce = nn.Sequential(nn.GELU(), layers.ConvBNReLU(2*in_channels, out_channesl, 3, stride=2))
+        self.cbr1 = layers.ConvBNReLU(out_channesl, out_channesl*2, 1)
+        self.dws = nn.Sequential(layers.DepthwiseConvBN(out_channesl*2, out_channesl*2, kernels), nn.GELU())
+        self.se = SEModule(out_channesl*2)
+        self.cbr2 = layers.ConvBNReLU(out_channesl*2, out_channesl, 3)
+        
     def forward(self, x1, x2):
         y1 = self.conv1(x1)
         y2 = self.conv2(x2)
         ym = paddle.concat([y1, y2], 1)
 
         ym = self.reduce(ym)
+        # ym = self.pam(ym)
         y = self.cbr1(ym)
         y = self.dws(y)
+        y = self.se(y)
         y = self.cbr2(y)
         return y
+
+class SEModule(nn.Layer):
+    def __init__(self, channels, reductions = 8):
+        super(SEModule, self).__init__()
+        reduction_channels = channels // reductions
+        self.avg = nn.AdaptiveAvgPool2D(1)
+        self.fc1 = nn.Conv2D(channels, reduction_channels, 1, bias_attr=False)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Conv2D(reduction_channels, channels, 1, bias_attr=False)
+        self.sig = nn.Sigmoid()
+
+    def forward(self, x):
+        # b, c , _, _ = x.shape
+        avg = self.avg(x)
+        y = self.fc1(avg)
+        y = self.relu(y)
+        y = self.fc2(y)
+        y = self.sig(y)
+        y = y.expand_as(x)
+        return x * y

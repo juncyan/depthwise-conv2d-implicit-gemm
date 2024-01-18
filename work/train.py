@@ -185,7 +185,7 @@ def train(model,
 
         mean_iou = evaluate(model,val_loader,args = args)
 
-        if mean_iou > max(0.5, best_mean_iou):
+        if mean_iou > best_mean_iou:
             # predict(model, test_data_loader, args)
             best_mean_iou = mean_iou
             best_model_iter = epoch

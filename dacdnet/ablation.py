@@ -2,6 +2,8 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddleseg.models import layers
+# from paddleseg.models.backbones import ResNet34_vd
+from models.backbone.resnet import ResbackBone, ResNet
 
 from .blocks import *
 
@@ -43,30 +45,34 @@ class PSLKNet(nn.Layer):
         return y
     
 
-class PLKNet(nn.Layer):
+class PLKRes34(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=7):
         super().__init__()
         self.stage1 = BII(in_channels, 64, kernels)#BFIB(2*in_channels, 64, kernels)
-        self.stage2 = BFIB(64, 128, kernels)
-        self.stage3 = BFIB(128, 256, kernels)
+        self.resback = ResbackBone(34,64)
+        # self.stage2 = BFIB(64, 128, kernels)
+        # self.stage3 = BFIB(128, 256, kernels)
         
-        self.stage4 = BFIB(256, 512, kernels)
-        
+        # self.stage4 = BFIB(256, 512, kernels)
+        # self.backbone = ResNet(in_channels=6, depth=34)
         self.up1 = UpBlock(256*3, 256)
         self.up2 = UpBlock(128*3, 128)
         self.up3 = UpBlock(64*3, 64)
 
-        self.classiier = layers.ConvBNAct(64, 2, 7, act_type="sigmoid")
+        self.classiier = layers.ConvBN(64, 2, 7)
     
     def forward(self, x1, x2):
         # f0 = paddle.concat([x1, x2], 1)
         f1 = self.stage1(x1, x2)
-        f2 = self.stage2(f1)
-        f3 = self.stage3(f2)
-        # f3 = self.stage31(f3)
-        f4 = self.stage4(f3)
-        # f4 = self.stage41(f4)
+        # f2 = self.stage2(f1)
+        # f3 = self.stage3(f2)
+        # # f3 = self.stage31(f3)
+        # f4 = self.stage4(f3)
+        # # f4 = self.stage41(f4)
+        
+        f2, f3, f4 = self.resback(f1)
+        # print(f1.shape, f2.shape, f3.shape, f4.shape)
 
         # f5 = self.ppm(f4)
         # r0 = self.up(f4, f5)

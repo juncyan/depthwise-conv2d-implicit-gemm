@@ -10,11 +10,11 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from dacdnet.ablation import PLKNet
+from dacdnet.ablation import PLKRes34
 
 # 参数、优化器及损失
 batch_size = 4
-iters = 200 #epochs * 445 // batch_size
+iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_d"
@@ -39,7 +39,7 @@ num_classes = 2
 # model = STANet(3,2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
-model = PLKNet()
+model = PLKRes34()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

@@ -10,22 +10,22 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from dacdnet.ablation import PRes34
+from dacdnet.ablation import PSLKNet, PLKRes34
 
 # 参数、优化器及损失
 batch_size = 4
-iters = 10 #epochs * 445 // batch_size
+iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_d"
 # dataset_name = "LEVIR_c"
 # dataset_name = "GVLM_CD_d"
-dataset_name = "CNAM_CD_d"
+dataset_name = "CLCD"
 # dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 
-num_classes = 6
+num_classes = 2
 # res = ResNet50_vd()
 # model = UNet(num_classes, in_channels=6)
 # model = UNetPlusPlus(num_classes, 6)
@@ -39,7 +39,8 @@ num_classes = 6
 # model = STANet(3,2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
-model = PRes34()
+# model = PSLKNet()
+model = PLKRes34()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

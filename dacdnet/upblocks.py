@@ -4,41 +4,12 @@ import paddle.nn.functional as F
 import paddleseg.models.layers as layers
 
 
-class CDFSF(nn.Layer):
-    #cross dimension features shift fusion
-    def __init__(self, in_c1, in_c2):
-        super().__init__()
-        dims = in_c1 + in_c2
-        self.zip_channels = layers.ConvBNReLU(dims, in_c2, 1)
-        self.lfc = layers.ConvBNReLU(in_c2, in_c2, 3)
-    
-        self.sa = layers.ConvBNAct(2, 1, 3, act_type='sigmoid')
-
-        self.outcbr = layers.ConvBNReLU(in_c2, in_c2, 3)
-        
-    def forward(self, x1, x2):
-        if x1.shape != x2.shape:
-            x1 = F.interpolate(x1, x2.shape[-2:], mode='bilinear')
-
-        x = paddle.concat([x1, x2], 1)
-        x = self.zip_channels(x)
-        y = self.lfc(x)
-        
-        max_feature = paddle.max(y, axis=1, keepdim=True)
-        mean_feature = paddle.mean(y, axis=1, keepdim=True)
-        
-        att_feature = paddle.concat([max_feature, mean_feature], axis=1)
-        y = self.sa(att_feature)
-        y = y * x
-        y = self.outcbr(y)
-        return y
-
 class UpBlock(nn.Layer):
     def __init__(self, in_channels, out_channels):
         super().__init__() 
         mid_c = out_channels * 2
         self.cbr1 = layers.ConvBNReLU(in_channels, out_channels, 3)
-        self.cbr2 = layers.ConvBNReLU(out_channels, mid_c, 3)
+        self.cbr2 = layers.ConvBNReLU(out_channels, mid_c, 1)
         self.cbr3 = layers.ConvBNReLU(mid_c, out_channels, 3)
 
     def forward(self, x1, x2):
@@ -77,16 +48,18 @@ class UpLK(nn.Layer):
     def __init__(self, in_channels, out_channels, kernels=7):
         super().__init__() 
         mid_c = out_channels * 2
-        self.cbr1 = layers.ConvBNReLU(in_channels, out_channels, 3)
-        self.cbr2 = layers.ConvBNReLU(out_channels, mid_c, 3)
+        self.cbr1 = layers.ConvBNReLU(in_channels, out_channels, 1)
+        self.dsw1 = nn.Sequential(layers.DepthwiseConvBN(out_channels, out_channels, kernels),nn.GELU())
+        self.cbr2 = layers.ConvBNReLU(out_channels, mid_c, 1)
         self.dsw = nn.Sequential(layers.DepthwiseConvBN(mid_c, mid_c, kernels),nn.GELU())
-        self.cbr3 = layers.ConvBNReLU(mid_c, out_channels, 3)
+        self.cbr3 = layers.ConvBNReLU(mid_c, out_channels, 1)
 
     def forward(self, x1, x2):
         if x1.shape != x2.shape:
             x1 = F.interpolate(x1,paddle.shape(x2)[2:],mode='bilinear')
         x = paddle.concat([x1, x2], axis=1)
         y = self.cbr1(x) 
+        y = self.dsw1(y)
         y = self.cbr2(y)
         y = self.dsw(y)
         res = self.cbr3(y)

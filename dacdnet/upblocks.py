@@ -19,15 +19,15 @@ class UpBlock(nn.Layer):
         super().__init__() 
         mid_c = out_channels * 2
         self.cbr1 = layers.ConvBNReLU(in_channels, out_channels, 3)
-        self.cbr2 = layers.ConvBNReLU(out_channels, mid_c, 1)
-        self.cbr3 = layers.ConvBNReLU(mid_c, out_channels, 3)
+        # self.cbr2 = layers.ConvBNReLU(out_channels, mid_c, 1)
+        self.cbr3 = layers.ConvBNReLU(out_channels, out_channels, 3)
 
     def forward(self, x1, x2):
         if x1.shape != x2.shape:
             x1 = F.interpolate(x1,paddle.shape(x2)[2:],mode='bilinear')
         x = paddle.concat([x1, x2], axis=1)
         y = self.cbr1(x) 
-        y = self.cbr2(y)
+        # y = self.cbr2(y)
         res = self.cbr3(y)
         return res
 

@@ -118,14 +118,33 @@ class LKBlock(nn.Layer):
         y = z1 + z2
         return self.lastcbr(self.bnr(y))
 
+class GAM(nn.Layer):
+    def __init__(self, channels):
+        super().__init__()
+
+        self.max = nn.AdaptiveMaxPool2D(1)
+        self.mean = nn.AdaptiveAvgPool2D(1)
+        self.bn = nn.BatchNorm2D(channels)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        m1 = self.max(x)
+        m2 = self.mean(x)
+        a = m1 + m2
+        y = a * x
+        y = self.relu(self.bn(y))
+
+        return y
+
 class FEBranch(nn.Layer):
-    def __init__(self, in_channels, mid_channels: list = [16, 32, 64, 128]):
+    def __init__(self, in_channels, mid_channels: list = [16, 32, 64, 128], kernels=7):
         super(FEBranch, self).__init__()
         self.layers = nn.LayerList()
         # self.layers.append(nn.Sequential(layers.ConvBNReLU(in_channels, mid_channels[0], 7, 3), layers.ConvBNReLU(mid_channels[0], mid_channels[0], 3)))
         in_channels = 3
         for c in mid_channels:
-            self.layers.append(LKBlock(in_channels, c))
+            # self.layers.append(nn.Sequential(LKBlock(in_channels, c), GAM(c)))
+            self.layers.append(LKBlock(in_channels, c, kernels))
             in_channels = c
 
     def forward(self, x):
@@ -138,10 +157,10 @@ class FEBranch(nn.Layer):
 
 class PSBFA(nn.Layer):
     #pseudo siamese bi-temporal feature assimilating module
-    def __init__(self, mid_channels=[64, 128, 256, 512]):
+    def __init__(self, mid_channels=[64, 128, 256, 512], kernels=7):
         super().__init__()
-        self.branch1 = FEBranch(3, mid_channels)
-        self.branch2 = FEBranch(3, mid_channels)
+        self.branch1 = FEBranch(3, mid_channels, kernels)
+        self.branch2 = FEBranch(3, mid_channels, kernels)
 
     def forward(self, x1, x2):
         # x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]

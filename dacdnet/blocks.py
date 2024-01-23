@@ -20,7 +20,7 @@ class BFIB(nn.Layer):
 
 class LKFE(nn.Layer):
     #large kernel feature extraction
-    def __init__(self, in_channels, kernels = [7]):
+    def __init__(self, in_channels, kernels = 7):
         super().__init__()
         self.conv1 = layers.ConvBNReLU(in_channels, 2 * in_channels, 3,)
         # self.dwc = nn.Sequential(layers.DepthwiseConvBN(2 * in_channels, 2 * in_channels, kernels),
@@ -40,7 +40,7 @@ class LKFE(nn.Layer):
     
 class LKCE(nn.Layer):
     #large kernel channel expansion
-    def __init__(self, in_channels, out_channels, kernels = [7], stride=1):
+    def __init__(self, in_channels, out_channels, kernels = 7, stride=1):
         super().__init__()
         self.conv1 = layers.ConvBNReLU(in_channels, 2*in_channels, 3, stride=stride)
 
@@ -77,17 +77,14 @@ class SEModule(nn.Layer):
         return x * y
 
 class MLKC(nn.Layer):
-    #multi-large kernel conv
-    def __init__(self, in_channels, kernels=[7]):
+    def __init__(self, in_channels, kernels=7):
         super().__init__()
-
-        mid_c = (len(kernels) + 1)*in_channels
         # print(mid_c, in_channels)
         self.c1 = nn.Conv2D(in_channels, in_channels, 1)
 
-        self.lkcs = nn.LayerList()
-        for kernel in kernels:
-            self.lkcs.add_sublayer(f'{kernel}',nn.Conv2D(in_channels, in_channels, kernel, padding=kernel//2, groups=in_channels))
+        self.lkcs = nn.Conv2D(in_channels, in_channels, kernels, padding=kernels//2, groups=in_channels)
+        # for kernel in kernels:
+        #     self.lkcs.add_sublayer(f'{kernel}',nn.Conv2D(in_channels, in_channels, kernel, padding=kernel//2, groups=in_channels))
 
         self.bn = nn.BatchNorm2D(in_channels)
         self.gelu = nn.GELU()
@@ -95,10 +92,9 @@ class MLKC(nn.Layer):
         self.cbr = layers.ConvBNReLU(in_channels, in_channels, 3)
     
     def forward(self, x):
-        y = self.c1(x)
-        for op in self.lkcs:
-            y += op(x)
-        
+        y1 = self.c1(x)
+        y2 = self.lkcs(x)
+        y = y1 + y2
         # my = paddle.concat(y, 1)
         my = self.gelu(self.bn(y))
         res = self.cbr(my)
@@ -151,6 +147,23 @@ class PSBFA(nn.Layer):
         # x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]
         y1 = self.branch1(x1)
         y2 = self.branch2(x2)
+        res = []
+        for i, j in zip(y1, y2):
+            z = i + j
+            res.append(z)
+        return res
+
+class SBFA(nn.Layer):
+    #siamese bi-temporal feature assimilating module
+    def __init__(self, mid_channels=[64, 128, 256, 512]):
+        super().__init__()
+        self.branch1 = FEBranch(3, mid_channels)
+        # self.branch2 = FEBranch(3, mid_channels)
+
+    def forward(self, x1, x2):
+        # x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]
+        y1 = self.branch1(x1)
+        y2 = self.branch1(x2)
         res = []
         for i, j in zip(y1, y2):
             z = i + j

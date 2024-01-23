@@ -24,46 +24,33 @@ import random
 import os
 import numpy as np
 import paddle
-from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab
 from paddleseg.models.losses import BCELoss
 from paddleseg.transforms import Resize
 
 from datasets.dataloader import DataReader, TestReader
 from work.predict import predict
 from common import Args
-from models.dacdnet import ACDNet_v3
-from models.dacdnet.abli import ACDNet
-from models.f3net import F3Net
-from models.f3net.UAlibaltion import LKAUChangeST, LKAUChange_noPPM
-from models.msfgnet import MSFGNet
 from paddleseg.utils import TimeAverager
 from common import Metrics
 from common.logger import load_logger
 
+from dacdnet.ablation import PSLKNet, MSLKNet
 
 
-dataset_name = "LEVIR_d"
+
+# dataset_name = "LEVIR_d"
 # dataset_name = "GVLM_CD_d"
-# dataset_name = "CLCD"
+dataset_name = "CLCD"
 # dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 num_classes = 2
 
-# model = UNet(num_classes, in_channels=6)
-# model = UNetPlusPlus(num_classes, 6)
-# model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
-# model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
-# model = ACDNet_v3(in_channels=6, num_classes=num_classes)
-# model = UChange(in_channels=6, num_classes=num_classes)
-# model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
-# model = ACDNet_v3(num_classes,in_channels=6)
-# model = LKAUChange_noPPM()
-model = MSFGNet()
+model = MSLKNet()
 
 
 datatest = TestReader(dataset_path,"test")
 
 if __name__ == "__main__":
     print("test")
-    weight_path = r"/home/jq/Code/paddle/output/levir_c/LKSWNet_2023_12_15_01/LKSWNet_best.pdparams"
+    weight_path = r"/home/jq/Code/paddle/output/clcd/MSLKNet_2024_01_22_23/epoch_200_model.pdparams"
     predict(model, datatest, weight_path, datatest.data_name)

@@ -18,9 +18,9 @@ iters = 200 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_d"
-# dataset_name = "LEVIR_c"
+dataset_name = "LEVIR_c"
 # dataset_name = "GVLM_CD_d"
-dataset_name = "CLCD"
+# dataset_name = "CLCD"
 # dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 

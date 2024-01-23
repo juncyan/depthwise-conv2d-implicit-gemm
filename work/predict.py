@@ -55,7 +55,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
     color_label = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
 
     logger = load_logger(f"{img_dir}/prediction.log")
-    logger.info(f"test {model_name} on {data_name}")
+    logger.info(f"test {model_name} on {data_name} save in {img_dir}")
     model = model.to('gpu')
     
 

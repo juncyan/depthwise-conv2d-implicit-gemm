@@ -147,8 +147,8 @@ class PSBFA(nn.Layer):
         self.branch1 = FEBranch(3, mid_channels)
         self.branch2 = FEBranch(3, mid_channels)
 
-    def forward(self, x):
-        x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]
+    def forward(self, x1, x2):
+        # x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]
         y1 = self.branch1(x1)
         y2 = self.branch2(x2)
         res = []

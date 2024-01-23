@@ -4,6 +4,16 @@ import paddle.nn.functional as F
 import paddleseg.models.layers as layers
 
 
+class MF(nn.Layer):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.cbr = layers.ConvBNReLU(in_channels, out_channels, 3)
+    
+    def forward(self, x1, x2):
+        x = paddle.concat([x1, x2], 1)
+        y = self.cbr(x)
+        return y
+
 class UpBlock(nn.Layer):
     def __init__(self, in_channels, out_channels):
         super().__init__() 

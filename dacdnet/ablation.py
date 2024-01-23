@@ -43,36 +43,41 @@ class MSLKNet(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=[7]):
         super().__init__()
+
+        self.fa = PSBFA([64, 128, 256, 512])
+
         self.stage1 = STAF(in_channels, 64)#BFIB(2*in_channels, 64, kernels)
         self.stage2 = BFIB(64, 128, kernels)
         self.stage3 = BFIB(128, 256, kernels)
         self.stage4 = BFIB(256, 512, kernels)
 
-        self.fa = PSBFA([64, 128, 256, 512])
-
         # self.cls1 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
         # self.cls2 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
+        self.cbr1 = MF(128,64)
+        self.cbr2 = MF(256,128)
+        self.cbr3 = MF(512,256)
+        self.cbr4 = MF(1024,512)
 
-        self.up1 = UpBlock(512*3, 512)
-        self.up2 = UpBlock(256*3, 256)
-        self.up3 = UpBlock(128*3, 128)
+        self.up1 = UpBlock(512+256, 256)
+        self.up2 = UpBlock(256+128, 128)
+        self.up3 = UpBlock(128+64, 64)
 
-        self.classiier = layers.ConvBNAct(128, 2, 7, act_type="sigmoid")
+        self.classiier = layers.ConvBNAct(64, 2, 7, act_type="sigmoid")
     
     def forward(self, x):
         x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]
         _, _, w, h = x1.shape
+        a1, a2, a3, a4 = self.fa(x1, x2)
+
         f1 = self.stage1(x1, x2)
-        f2 = self.stage2(f1)
-        f3 = self.stage3(f2)
-        f4 = self.stage4(f3)
+        m1 = self.cbr1(f1, a1)
+        f2 = self.stage2(m1)
+        m2 = self.cbr2(f2, a2)
+        f3 = self.stage3(m2)
+        m3 = self.cbr3(f3, a3)
+        f4 = self.stage4(m3)
+        m4 = self.cbr4(f4, a4)
 
-        a1, a2, a3, a4 = self.fa(x)
-
-        m4 = paddle.concat([f4, a4], 1)
-        m3 = paddle.concat([f3, a3], 1)
-        m2 = paddle.concat([f2, a2], 1)
-        m1 = paddle.concat([f1, a1], 1)
         # print(f1.shape, f2.shape, f3.shape, f4.shape)
         # print(a1.shape, a2.shape, a3.shape, a4.shape)
         

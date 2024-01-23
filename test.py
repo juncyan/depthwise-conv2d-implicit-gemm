@@ -1,5 +1,5 @@
 import paddle
-from dacdnet.blocks import GAM
+from cd_models.dacdnet.blocks import GAM
 
 x = paddle.rand([4,16,128,128]).cuda()
 m = GAM().to("gpu")

@@ -10,7 +10,6 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from dacdnet.ablation import PSLKNet_k3
 
 # 参数、优化器及损失
 batch_size = 4
@@ -26,19 +25,16 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
 # res = ResNet50_vd()
-# model = UNet(num_classes, in_channels=6)
+model = UNet(num_classes, in_channels=6)
 # model = UNetPlusPlus(num_classes, 6)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
-# model = ACDNet_v3(in_channels=6, num_classes=num_classes)
-# model = ACDNet(in_channels=6,num_classes=num_classes)
-# model = LKAUChange(in_channels=6, num_classes=num_classes)
 # model = DSAMNet(3,2)
 # model = STANet(3,2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
-model = PSLKNet_k3()
+
 
 
 model_name = model.__str__().split("(")[0]

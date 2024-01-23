@@ -34,7 +34,7 @@ from paddleseg.utils import TimeAverager
 from common import Metrics
 from common.logger import load_logger
 
-from dacdnet.ablation import PSLKNet, MSLKNet
+from pslknet.ablation import PSLKNet, MSLKNet
 
 
 

@@ -10,7 +10,7 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from dacdnet.ablation import PSLKNet_k3
+from pslknet.ablation import PSLKNet_k3
 
 # 参数、优化器及损失
 batch_size = 4

@@ -69,7 +69,8 @@ class DSAMNet(nn.Layer):
 
         self.init_weight()
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         f1 = self.backbone(t1)
         f2 = self.backbone(t2)
 

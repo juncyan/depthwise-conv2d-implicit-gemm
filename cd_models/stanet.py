@@ -68,7 +68,8 @@ class STANet(nn.Layer):
 
         self.init_weight()
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         f1 = self.extract(t1)
         f2 = self.extract(t2)
 
@@ -86,19 +87,19 @@ class STANet(nn.Layer):
         # Note however that currently self.attend and self.conv_out use the default initilization method.
         pass
 
-    # @staticmethod
-    # def loss(pred, label):
-    #     prob= pred
-    #     label = paddle.argmax(label, 1).unsqueeze(1).float()
-    #     # print(prob.shape, label.shape)
-    #     CT_loss = BCL()(prob, label)
-    #     CD_loss = CT_loss
-    #     return CD_loss
+    @staticmethod
+    def loss(pred, label):
+        prob= pred
+        label = paddle.argmax(label, 1).unsqueeze(1).float()
+        # print(prob.shape, label.shape)
+        CT_loss = BCL()(prob, label)
+        CD_loss = CT_loss
+        return CD_loss
     
-    # @staticmethod
-    # def predict(pred):
-    #     prob = (pred > 1).int()
-    #     return prob
+    @staticmethod
+    def predict(pred):
+        prob = (pred > 1).int()
+        return prob
 
 
 def build_feat_extractor(in_ch, width):

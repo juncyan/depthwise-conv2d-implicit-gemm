@@ -94,7 +94,8 @@ class DSIFN(nn.Layer):
 
         self.init_weight()
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         # Extract bi-temporal features.
         with paddle.no_grad():
             self.encoder1.eval(), self.encoder2.eval()

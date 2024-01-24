@@ -170,7 +170,8 @@ class BIT(nn.Layer):
         x = x.transpose((0, 2, 1)).reshape((b, c, h, w))
         return x
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         # Extract features via shared backbone.
         x1 = self.backbone(t1)
         x2 = self.backbone(t2)

@@ -32,7 +32,7 @@ class CDNet(nn.Layer):
         num_classes (int): Number of target classes.
     """
 
-    def __init__(self, in_channels, num_classes):
+    def __init__(self, in_channels=6, num_classes=2):
         super(CDNet, self).__init__()
         self.conv1 = Conv7x7(in_channels, 64, norm=True, act=True)
         self.pool1 = nn.MaxPool2D(2, 2, return_mask=True)
@@ -52,8 +52,9 @@ class CDNet(nn.Layer):
         self.upool1 = nn.MaxUnPool2D(2, 2)
         self.conv_out = Conv7x7(64, num_classes, norm=False, act=False)
 
-    def forward(self, t1, t2):
-        x = paddle.concat([t1, t2], axis=1)
+    def forward(self, x):
+        # t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
+        # x = paddle.concat([t1, t2], axis=1)
         x, ind1 = self.pool1(self.conv1(x))
         x, ind2 = self.pool2(self.conv2(x))
         x, ind3 = self.pool3(self.conv3(x))
@@ -62,4 +63,4 @@ class CDNet(nn.Layer):
         x = self.conv6(self.upool3(x, ind3))
         x = self.conv7(self.upool2(x, ind2))
         x = self.conv8(self.upool1(x, ind1))
-        return [self.conv_out(x)]
+        return self.conv_out(x)

@@ -107,7 +107,8 @@ class FCSiamConc(nn.Layer):
 
         self.init_weight()
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         # Encode t1
         # Stage 1
         x11 = self.do11(self.conv11(t1))

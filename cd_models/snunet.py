@@ -97,7 +97,8 @@ class SNUNet(nn.Layer, KaimingInitMixin):
 
         self.init_weight()
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         x0_0_t1 = self.conv0_0(t1)
         x1_0_t1 = self.conv1_0(self.down1(x0_0_t1))
         x2_0_t1 = self.conv2_0(self.down2(x1_0_t1))

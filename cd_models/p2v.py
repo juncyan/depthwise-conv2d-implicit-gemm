@@ -280,7 +280,8 @@ class P2V(nn.Layer):
             (2 * in_channels, ) + pair_encoder_channels, decoder_channels,
             num_classes)
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         frames = self.pair_to_video(t1, t2)
         feats_v = self.encoder_v(frames.transpose((0, 2, 1, 3, 4)))
         feats_v.pop(0)

@@ -25,7 +25,7 @@ import paddle.nn.functional as F
 from work.count_params import flops
 from paddleseg.utils import worker_init_fn, op_flops_funs
 from work.val import evaluate
-from work.predict import test
+from work.predict import test, test_last
 
 
 def check_logits_losses(logits_list, losses):
@@ -202,6 +202,8 @@ def train(model,
     # Calculate flops.
     # if not "precision" == 'fp16':
     test(model, test_data_loader, args)
+    lsp = os.path.join(args.save_dir, f'epoch_{iters}_model.pdparams')
+    test_last(model, test_data_loader, args, lsp)
     
     # Sleep for a second to let dataloader release resources.
     time.sleep(1)

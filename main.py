@@ -7,7 +7,7 @@ import paddle
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from pslknet.model import PSLKNet_k9
+from pslknet.model import PSLKNet_k11
 
 # 参数、优化器及损失
 batch_size = 4
@@ -26,7 +26,7 @@ num_classes = 2
 # model = STANet(3,2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
-model = PSLKNet_k9()
+model = PSLKNet_k11()
 
 
 model_name = model.__str__().split("(")[0]

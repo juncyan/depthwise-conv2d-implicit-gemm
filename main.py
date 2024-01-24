@@ -22,10 +22,6 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 
 num_classes = 2
-# model = DSAMNet(3,2)
-# model = STANet(3,2)
-# model = FCSiamConc(3,2)
-# model = FCCDN(3,2)
 model = PSLKNet_k11()
 
 

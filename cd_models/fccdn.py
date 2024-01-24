@@ -444,7 +444,8 @@ class FCCDN(nn.Layer):
             nn.Conv2D(
             channel_list[3], 1, kernel_size=1, stride=1, padding=0))
 
-    def forward(self, t1, t2):
+    def forward(self, x):
+        t1, t2 = x[:, :3, :, :], x[:, 3:, :, :]
         e1_1 = self.block1(t1)
         e2_1 = self.block2(e1_1)
         e3_1 = self.block3(e2_1)

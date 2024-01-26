@@ -9,9 +9,9 @@ from models.backbone.resnet import ResbackBone, ResNet
 from .blocks import *
 from .utils import *
 
-class PSLKNet_k11(nn.Layer):
+class PSLKNet_k13(nn.Layer):
     #large kernel pseudo siamese network
-    def __init__(self, in_channels=3, kernels=11):
+    def __init__(self, in_channels=3, kernels=13):
         super().__init__()
 
         self.fa = PSBFA([64, 128, 256, 512], kernels)
@@ -94,8 +94,6 @@ class SLKNet(nn.Layer):
     #large kernel siamese network
     def __init__(self, in_channels=3, kernels=7):
         super().__init__()
-
-        self.fa = SBFA([64, 128, 256, 512])
 
         self.stage1 = STAF(in_channels, 64)#BFIB(2*in_channels, 64, kernels)
         self.stage2 = BFIB(64, 128, kernels)

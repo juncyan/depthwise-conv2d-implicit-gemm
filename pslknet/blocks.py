@@ -9,7 +9,6 @@ class BFIB(nn.Layer):
     def __init__(self, in_channels, out_channels, kernels = 7, stride=2):
         super().__init__()
         self.fe = LKFE(in_channels, kernels)
-        
         self.ce = LKCE(in_channels, out_channels, kernels, stride)
         
     def forward(self, x):
@@ -131,21 +130,25 @@ class PSBFA(nn.Layer):
             res.append(z)
         return res
 
-class SBFA(nn.Layer):
-    #siamese bi-temporal feature assimilating module
-    def __init__(self, mid_channels=[64, 128, 256, 512]):
-        super().__init__()
-        self.branch1 = FEBranch(3, mid_channels)
-        # self.branch2 = FEBranch(3, mid_channels)
 
-    def forward(self, x1, x2):
-        # x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]
-        y1 = self.branch1(x1)
-        y2 = self.branch1(x2)
+class PSBFE(nn.Layer):
+    #pseudo siamese bi-temporal feature extraction module
+    def __init__(self, in_channels, mid_channels: list = [16, 32, 64, 128], kernels=7):
+        super().__init__()
+        self.layers = nn.LayerList()
+        # self.layers.append(nn.Sequential(layers.ConvBNReLU(in_channels, mid_channels[0], 7, 3), layers.ConvBNReLU(mid_channels[0], mid_channels[0], 3)))
+        in_channels = 3
+        for c in mid_channels:
+            # self.layers.append(nn.Sequential(LKBlock(in_channels, c), GAM(c)))
+            self.layers.append(BFIB(in_channels, c, kernels))
+            in_channels = c
+
+    def forward(self, x):
+        y = x
         res = []
-        for i, j in zip(y1, y2):
-            z = i + j
-            res.append(z)
+        for layer in self.layers:
+            y = layer(y)
+            res.append(y)
         return res
 
 class STAF(nn.Layer):

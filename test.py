@@ -7,23 +7,23 @@ import paddle
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from pslknet.abliation import SLKNet_k7
+from pslknet.model import PSLKNet_k13
+from pslknet.abliation import LKC_PSNet_k13
 
 # 参数、优化器及损失
-batch_size = 4
+batch_size = 8
 iters = 200 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_c"
 # dataset_name = "GVLM_CD_d"
-dataset_name = "CLCD"
-# dataset_name = "SYSCD_d"
+# dataset_name = "CLCD"
+dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 
 num_classes = 2
-model = SLKNet_k7()
-
+model = PSLKNet_k13()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

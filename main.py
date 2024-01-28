@@ -11,7 +11,7 @@ from pslknet.model import PSLKNet_k13
 from pslknet.abliation import LKC_PSNet_k13
 
 # 参数、优化器及损失
-batch_size = 4
+batch_size = 8
 iters = 200 #epochs * 445 // batch_size
 base_lr = 2e-4
 
@@ -23,7 +23,7 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 
 num_classes = 2
-model = LKC_PSNet_k13()
+model = PSLKNet_k13()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

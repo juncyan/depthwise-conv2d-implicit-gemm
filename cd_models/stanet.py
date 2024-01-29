@@ -90,7 +90,8 @@ class STANet(nn.Layer):
     @staticmethod
     def loss(pred, label):
         prob= pred
-        label = paddle.argmax(label, 1).unsqueeze(1).float()
+        label = paddle.argmax(label, 1, keepdim=True)
+        label = paddle.to_tensor(label, paddle.float32)
         # print(prob.shape, label.shape)
         CT_loss = BCL()(prob, label)
         CD_loss = CT_loss
@@ -98,7 +99,7 @@ class STANet(nn.Layer):
     
     @staticmethod
     def predict(pred):
-        prob = (pred > 1).int()
+        prob = paddle.to_tensor(pred > 1, paddle.int8)
         return prob
 
 

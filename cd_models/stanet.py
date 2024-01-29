@@ -87,20 +87,21 @@ class STANet(nn.Layer):
         # Note however that currently self.attend and self.conv_out use the default initilization method.
         pass
 
-    @staticmethod
-    def loss(pred, label):
-        prob= pred
-        label = paddle.argmax(label, 1, keepdim=True)
-        label = paddle.to_tensor(label, paddle.float32)
-        # print(prob.shape, label.shape)
-        CT_loss = BCL()(prob, label)
-        CD_loss = CT_loss
-        return CD_loss
+    # @staticmethod
+    # def loss(pred, label):
+    #     prob= pred
+    #     label = paddle.argmax(label, 1, keepdim=True)
+    #     label = paddle.to_tensor(label, paddle.float32)
+    #     # print(prob.shape, label.shape)
+    #     CT_loss = BCL()(prob, label)
+    #     CD_loss = CT_loss
+    #     return CD_loss
     
-    @staticmethod
-    def predict(pred):
-        prob = paddle.to_tensor(pred > 1, paddle.int8)
-        return prob
+    # @staticmethod
+    # def predict(pred):
+    #     # print(pred.shape)
+    #     # prob = paddle.to_tensor(pred > 1, paddle.int8)
+    #     return pred
 
 
 def build_feat_extractor(in_ch, width):

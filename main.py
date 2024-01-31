@@ -5,6 +5,7 @@ import paddle
 from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab
 from cd_models.fccdn import FCCDN
 from cd_models.stanet import STANet
+from cd_models.p2v import P2V
 from paddleseg.models.losses import BCELoss
 from paddleseg.transforms import Resize
 
@@ -19,9 +20,9 @@ iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_c"
-# dataset_name = "GVLM_CD_d"
+dataset_name = "GVLM_CD_d"
 # dataset_name = "CLCD"
-dataset_name = "SYSCD_d"
+# dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 
@@ -33,7 +34,7 @@ num_classes = 2
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
 # model = DSAMNet(3,2)
-model = STANet(3,2)
+model = P2V(3, 2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
 

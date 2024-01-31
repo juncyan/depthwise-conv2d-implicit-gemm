@@ -2,7 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+main.py
+prediction.py
+test.py
 # C extensions
 *.so
 

@@ -21,7 +21,7 @@ dataset_name = "GVLM_CD_d"
 # dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
-ks = [3,5,7,11,15,17,19]
+ks = [11,15,17,19]
 
 num_classes = 2
 

@@ -11,17 +11,17 @@ from pslknet.model import PSLKNet_k9
 from pslknet.abliation import PSLKNet
 
 # 参数、优化器及损失
-batch_size = 8
+batch_size = 4
 iters = 200 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_c"
-dataset_name = "GVLM_CD_d"
-# dataset_name = "CLCD"
+# dataset_name = "GVLM_CD_d"
+dataset_name = "CLCD"
 # dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
-ks = [11,15,17,19]
+ks = [17,19]
 
 num_classes = 2
 

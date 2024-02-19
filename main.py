@@ -7,7 +7,7 @@ import paddle
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from pslknet.model import PSLKNet_lk9
+from pslknet.model import PSLKNet_ak9
 from pslknet.abliation import PSLKNet
 
 # 参数、优化器及损失
@@ -22,7 +22,7 @@ dataset_name = "GVLM_CD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
-model = PSLKNet()
+model = PSLKNet_ak9()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

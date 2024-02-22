@@ -34,23 +34,23 @@ from paddleseg.utils import TimeAverager
 from common import Metrics
 from common.logger import load_logger
 
-from pslknet.model import PSLKNet_k9
+from pslknet.model import PSLKNet
 
 
 
 # dataset_name = "LEVIR_c"
-# dataset_name = "GVLM_CD_d"
-dataset_name = "CLCD"
+dataset_name = "GVLM_CD_d"
+# dataset_name = "CLCD"
 # dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 num_classes = 2
 
-model = PSLKNet_k9()
+model = PSLKNet()
 
 
 datatest = TestReader(dataset_path,"test")
 
 if __name__ == "__main__":
     print("test")
-    weight_path = r"/home/jq/Code/paddle/output/clcd/PSLKNet_k9_2024_01_24_15/epoch_200_model.pdparams"
+    weight_path = r"output/gvlm_cd_d/PSLKNet_k9_2024_02_01_19/epoch_200_model.pdparams"
     predict(model, datatest, weight_path, datatest.data_name)

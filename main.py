@@ -7,22 +7,22 @@ import paddle
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from pslknet.model import PSLKNet_ak9
-from pslknet.abliation import PSLKNet
+from pslknet.model import PSLKNet
+from pslknet.abliation import PSLKNet_noPSAA
 
 # 参数、优化器及损失
 batch_size = 8
-iters = 200 #epochs * 445 // batch_size
+iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
-# dataset_name = "LEVIR_c"
-dataset_name = "GVLM_CD_d"
+dataset_name = "LEVIR_c"
+# dataset_name = "GVLM_CD_d"
 # dataset_name = "CLCD"
 # dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
-model = PSLKNet_ak9()
+model = PSLKNet_noPSAA()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

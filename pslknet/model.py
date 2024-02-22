@@ -9,7 +9,7 @@ from models.backbone.resnet import ResbackBone, ResNet
 from .blocks import *
 from .utils import *
 
-class PSLKNet_ak9(nn.Layer):
+class PSLKNet(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=9):
         super().__init__()
@@ -22,7 +22,8 @@ class PSLKNet_ak9(nn.Layer):
         self.stage4 = BFIB(256, 512, kernels)
 
         # self.cls2 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
-        self.cls2 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
+        # self.cls1 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
+        
         self.cbr1 = MF(128,64)
         self.cbr2 = MF(256,128)
         self.cbr3 = MF(512,256)
@@ -55,40 +56,40 @@ class PSLKNet_ak9(nn.Layer):
         r2 = self.up2(r1, m2)
         r3 = self.up3(r2, m1)
 
-        # l1 = self.cls1(f4)
+        # l1 = self.cls1(m4)
         # l1 = F.interpolate(l1, size=[w, h],mode='bilinear')
 
-        l2 = self.cls2(a4)
-        l2 = F.interpolate(l2, size=[w, h],mode='bilinear')
+        # l2 = self.cls2(a4)
+        # l2 = F.interpolate(l2, size=[w, h],mode='bilinear')
 
         y = F.interpolate(r3, size=[w, h],mode='bilinear')
         y = self.classiier(y)
 
-        return y , l2 #, l2
+        return y #, l1
     
-    @staticmethod
-    def loss(pred, label, wdice=0.6):
-        # label = paddle.argmax(label,axis=1)
-        prob, l2 = pred
+    # @staticmethod
+    # def loss(pred, label, wdice=0.6):
+    #     # label = paddle.argmax(label,axis=1)
+    #     prob, l2 = pred
 
-        # label = paddle.argmax(label, 1).unsqueeze(1)
-        label = paddle.to_tensor(label, paddle.float32)
+    #     # label = paddle.argmax(label, 1).unsqueeze(1)
+    #     label = paddle.to_tensor(label, paddle.float32)
         
-        # dsloss1 = nn.loss.BCELoss()(l1, label)
-        dsloss2 = nn.loss.BCELoss()(l2, label)
-        # Dice_loss = 0.5*(dsloss1+dsloss2)
+    #     # dsloss1 = nn.loss.BCELoss()(l1, label)
+    #     dsloss2 = nn.loss.BCELoss()(l2, label)
+    #     # Dice_loss = 0.5*(dsloss1+dsloss2)
 
-        label = paddle.argmax(label, 1).unsqueeze(1)
-        # label = paddle.to_tensor(label, paddle.float16)
+    #     label = paddle.argmax(label, 1).unsqueeze(1)
+    #     # label = paddle.to_tensor(label, paddle.float16)
 
-        CT_loss = nn.loss.CrossEntropyLoss(axis=1)(prob, label)
-        CD_loss = CT_loss + wdice * dsloss2
-        return CD_loss
+    #     CT_loss = nn.loss.CrossEntropyLoss(axis=1)(prob, label)
+    #     CD_loss = CT_loss + wdice * dsloss2
+    #     return CD_loss
     
-    @staticmethod
-    def predict(pred):
-        prob, _ = pred
-        return prob
+    # @staticmethod
+    # def predict(pred):
+    #     prob, l2 = pred
+    #     return prob #+ l2
 
 class SLKNet(nn.Layer):
     #large kernel siamese network

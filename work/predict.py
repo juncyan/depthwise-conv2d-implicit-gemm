@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import os
-
 import cv2
 import numpy as np
 import time
 import paddle
 import datetime
+import glob
+import pandas as pd
 
 from paddleseg.utils import TimeAverager, op_flops_funs
 from common import Metrics
 from common.logger import load_logger
+from common.csver import cls_count
 from work.count_params import flops
 
 
@@ -307,6 +309,17 @@ def test(model, dataset, args):
         custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
     logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))    
 
+    img_files = glob.glob(os.path.join(img_dir, '*.png'))
+    data = []
+    for img_path in img_files:
+        img = cv2.imread(img_path)
+        lab = cls_count(img)
+        # lab = np.argmax(lab, -1)
+        data.append(lab)
+    if data != []:
+        data = np.array(data)
+        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{args.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)
+
 
 def test_last(model, dataset, args, last_model_path=None):
     """
@@ -442,6 +455,17 @@ def test_last(model, dataset, args, last_model_path=None):
         model, [1, c, h, w], 2,
         custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
     logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))       
+
+    img_files = glob.glob(os.path.join(img_dir, '*.png'))
+    data = []
+    for img_path in img_files:
+        img = cv2.imread(img_path)
+        lab = cls_count(img)
+        # lab = np.argmax(lab, -1)
+        data.append(lab)
+    if data != []:
+        data = np.array(data)
+        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{args.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)
 
 
 

@@ -482,6 +482,8 @@ class ViTB_patch16_512(nn.Layer):
         return y
 
     def forward(self, x):
+        _,_,s,_ = x.shape
+        out_sizes = [s //2, s //4, s//8]
         x = self.patch_embed(x)
         x_shape = paddle.shape(x)  # b * c * h * w
 
@@ -503,7 +505,7 @@ class ViTB_patch16_512(nn.Layer):
             if (idx+1) % self.idx_skip == 0:
                 x = self.norms[out_idx](x)
                 y = x[:, 1:, :]
-                y = self.reverse_embed(y, self.out_sizes[out_idx])
+                y = self.reverse_embed(y, out_sizes[out_idx])
                 out_idx += 1
                 res.append(y)
             

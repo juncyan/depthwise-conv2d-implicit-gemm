@@ -2,6 +2,7 @@ import random
 import os
 import numpy as np
 import paddle
+
 from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab
 from cd_models.fccdn import FCCDN
 from cd_models.stanet import STANet
@@ -10,21 +11,25 @@ from paddleseg.models.losses import BCELoss
 from paddleseg.transforms import Resize
 
 
+
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
+from pslknet.model import PSLKNet
+from pslknet.abliation import PSLKNet_SwinT
+
 
 # 参数、优化器及损失
 batch_size = 4
 iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
-# dataset_name = "LEVIR_c"
-dataset_name = "GVLM_CD_d"
-# dataset_name = "CLCD"
-# dataset_name = "SYSCD_d"
-dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
+# dataset_name = "LEVIR_CD"
+dataset_name = "GVLMCD"
+# dataset_name = "CLCD"
+# dataset_name = "SYSUCD"
+dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
 # res = ResNet50_vd()
@@ -38,6 +43,9 @@ model = P2V(3, 2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
 
+
+
+model = PSLKNet_SwinT()
 
 
 model_name = model.__str__().split("(")[0]

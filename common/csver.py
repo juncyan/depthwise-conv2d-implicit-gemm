@@ -287,3 +287,16 @@ def save_log_as_csv(data_dir, save_path):
     data = d.values.transpose([1, 0])
     s = pd.DataFrame(data, indexs, keys)
     s.to_csv(save_path)
+
+def cls_count(label):
+    cls_nums = []
+    color_label = np.array([[0, 0, 0], [255, 255, 255], [0, 128, 0], [0, 0, 128]])
+    for info in color_label:
+        color = info
+        # print("label:\n", label.shape,label)
+        # print("color:\n", color)
+        equality = np.equal(label, color)
+        matrix = np.sum(equality, axis=-1)
+        nums = np.sum(matrix == 3)
+        cls_nums.append(nums)
+    return cls_nums

@@ -1,14 +1,7 @@
-import os
-import glob
+from pslknet.lkblocks import ConvNeXt
+import paddle
 
-bdir = r"output/"
-sdirs = os.listdir(bdir)
-for sdir in sdirs:
-    bspath = os.path.join(bdir, sdir)
-    ssdirs = os.listdir(bspath)
-    for ssd in ssdirs:
-        pth = os.path.join(bspath, ssd)
-        file_names = glob.glob(os.path.join(pth, '*.pdparams'))
-        for fn in file_names:
-            if not "best" in fn:
-                os.remove(fn)
+x = paddle.rand([2,16,128,128]).cuda()
+m = ConvNeXt(16).to('gpu')
+y = m(x)
+print(y.shape)

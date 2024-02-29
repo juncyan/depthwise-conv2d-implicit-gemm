@@ -24,7 +24,7 @@ class PSLKNet_SwinT(nn.Layer):
         # self.stage3 = BFIB(128, 256, kernels)
         # self.stage4 = BFIB(256, 512, kernels)
 
-        self.backbone = SwinTransBackbone(256,in_chans=64, window_size=8)
+        self.backbone = SwinTransBackbone(128,in_chans=64,depths=[4,4,12,4] ,window_size=8)
 
         # self.cls2 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
         # self.cls2 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")

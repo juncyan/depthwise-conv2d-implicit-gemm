@@ -24,11 +24,10 @@ batch_size = 4
 iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
-
 # dataset_name = "LEVIR_CD"
-dataset_name = "GVLMCD"
+# dataset_name = "GVLMCD"
 # dataset_name = "CLCD"
-# dataset_name = "SYSUCD"
+dataset_name = "SYSCD_d"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
@@ -39,10 +38,9 @@ num_classes = 2
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
 # model = DSAMNet(3,2)
-model = P2V(3, 2)
+# model = P2V(3, 2)
 # model = FCSiamConc(3,2)
 # model = FCCDN(3,2)
-
 
 
 model = PSLKNet_SwinT()

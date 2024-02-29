@@ -11,7 +11,6 @@ from models.backbone.vit import ViTB_patch16_512
 from .blocks import *
 from .utils import *
 
-
 class PSLKNet_SwinT(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=9):

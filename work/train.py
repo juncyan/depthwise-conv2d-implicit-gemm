@@ -205,8 +205,6 @@ def train(model,
     
     test(model, test_data_loader, args)
 
-    test_last(model, test_data_loader, args, os.path.join(args.save_dir, f'epoch_{iters}_model.pdparams'))
-
     lsp = os.path.join(args.save_dir, f'epoch_{iters}_model.pdparams')
     test_last(model, test_data_loader, args, lsp)
     logging.shutdown()

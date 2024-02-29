@@ -8,21 +8,21 @@ from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
 from pslknet.model import PSLKNet
-from pslknet.abliation import PSLKNet_ViT_p16
+from pslknet.abliation import PSLKNet_SwinT
 
 # 参数、优化器及损失
 batch_size = 4
 iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
-# dataset_name = "LEVIR_c"
-dataset_name = "GVLM_CD_d"
-# dataset_name = "CLCD"
-# dataset_name = "SYSCD_d"
+# dataset_name = "LEVIRCD"
+# dataset_name = "GVLMCD"
+dataset_name = "CLCD"
+# dataset_name = "SYSUCD"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
-model = PSLKNet_ViT_p16()
+model = PSLKNet_SwinT()
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

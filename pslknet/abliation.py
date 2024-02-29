@@ -12,7 +12,7 @@ from .blocks import *
 from .utils import *
 
 
-class PSLKNet_ViT_p16(nn.Layer):
+class PSLKNet_SwinT(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=9):
         super().__init__()
@@ -24,14 +24,14 @@ class PSLKNet_ViT_p16(nn.Layer):
         # self.stage3 = BFIB(128, 256, kernels)
         # self.stage4 = BFIB(256, 512, kernels)
 
-        self.backbone = ViTB_patch16_512(64,128)
+        self.backbone = SwinTransBackbone(256,in_chans=64, window_size=8)
 
         # self.cls2 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
         # self.cls2 = layers.ConvBNAct(512, 2, 3, act_type="sigmoid")
         self.cbr1 = MF(128,64)
-        self.cbr2 = MF(128+24,128)
-        self.cbr3 = MF(256+96,256)
-        self.cbr4 = MF(512+384,512)
+        self.cbr2 = MF(128+12,128)
+        self.cbr3 = MF(256+24,256)
+        self.cbr4 = MF(512+48,512)
 
         self.up1 = UpBlock(512+256, 256)
         self.up2 = UpBlock(256+128, 128)
@@ -47,8 +47,9 @@ class PSLKNet_ViT_p16(nn.Layer):
         f1 = self.stage1(x1, x2)
         
         m1 = self.cbr1(f1, a1)
+        # f = self.backbone(m1)
         
-        f2, f3, f4 = self.backbone(m1)
+        f2, f3, f4, _ = self.backbone(m1)
         # print(f2.shape, f3.shape, f4.shape)
         # print(a1.shape, a2.shape, a3.shape, a4.shape)
         #f2 = self.stage2(m1)

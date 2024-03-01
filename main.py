@@ -15,8 +15,8 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from pslknet.model import PSLKNet
-from pslknet.abliation import PSLKNet_SwinT
+from pslknet.model import LKPSNet
+from pslknet.abliation import LKPSNet_RepLKB
 
 
 # 参数、优化器及损失
@@ -25,9 +25,9 @@ iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_CD"
-# dataset_name = "GVLMCD"
-# dataset_name = "CLCD"
-dataset_name = "SYSCD_d"
+# dataset_name = "GVLM_CD"
+dataset_name = "CLCD"
+# dataset_name = "SYSU_CD"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
@@ -43,7 +43,7 @@ num_classes = 2
 # model = FCCDN(3,2)
 
 
-model = PSLKNet_SwinT()
+model = LKPSNet_RepLKB()
 
 
 model_name = model.__str__().split("(")[0]

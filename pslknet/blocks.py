@@ -4,7 +4,7 @@ import paddle.nn.functional as F
 import paddleseg.models.layers as layers
 
 
-class BFIB(nn.Layer):
+class BFELKB(nn.Layer):
     #bi-temporal feature integrating block
     def __init__(self, in_channels, out_channels, kernels = 7, stride=2):
         super().__init__()
@@ -22,17 +22,13 @@ class LKFE(nn.Layer):
     def __init__(self, in_channels, kernels = 7):
         super().__init__()
         self.conv1 = layers.ConvBNReLU(in_channels, 2 * in_channels, 3,)
-        # self.dwc = nn.Sequential(layers.DepthwiseConvBN(2 * in_channels, 2 * in_channels, kernels),
-        #                          nn.GELU())
-        # self.se = SEModule(2 * in_channels, 8)
-        self.dwc = LKBlock(2*in_channels, kernels)
+        self.dwc = CBLKBlock(2*in_channels, kernels)
         self.conv2 = layers.ConvBNReLU(2 * in_channels, in_channels, 3,)
         self.ba = nn.Sequential(nn.BatchNorm2D(in_channels), nn.ReLU())
 
     def forward(self, x):
         m = self.conv1(x)
         m = self.dwc(m)
-        # m = self.se(m)
         m = self.conv2(m)
         y = x + m
         return self.ba(y)
@@ -42,10 +38,7 @@ class LKCE(nn.Layer):
     def __init__(self, in_channels, out_channels, kernels = 7, stride=1):
         super().__init__()
         self.conv1 = layers.ConvBNReLU(in_channels, 2*in_channels, 3, stride=stride)
-
-        # self.dwc = nn.Sequential(layers.DepthwiseConvBN(2*in_channels, 2*in_channels, kernels, stride=stride),
-        #                          nn.GELU())
-        self.dwc = LKBlock(2*in_channels, kernels)
+        self.dwc = CBLKBlock(2*in_channels, kernels)
         self.conv3 = layers.ConvBNReLU(2*in_channels, out_channels, 3)
 
     def forward(self, x):
@@ -54,7 +47,7 @@ class LKCE(nn.Layer):
         m = self.conv3(m)
         return m
 
-class LKBlock(nn.Layer):
+class CBLKBlock(nn.Layer):
     def __init__(self, in_channels, kernels=7):
         super().__init__()
         # print(mid_c, in_channels)
@@ -70,22 +63,24 @@ class LKBlock(nn.Layer):
         y1 = self.c1(x)
         y2 = self.lkcs(x)
         y = y1 + y2
-        # my = paddle.concat(y, 1)
         my = self.gelu(self.bn(y))
         res = self.cbr(my)
         return res
 
-class SLKBlock(nn.Layer):
+class FEAA(nn.Layer):
+    #assimilating assistant feature extraction
     def __init__(self, in_channels, out_channels, kernels=7):
         super().__init__()
         self.cbr1 = layers.ConvBNReLU(in_channels, out_channels, 3, 1, stride=2)
         
+        # CBLKB ------------------------------------------------------
         self.c11 = nn.Conv2D(out_channels, out_channels, 1)
         self.gck = nn.Conv2D(out_channels, out_channels, kernels, 1, kernels//2, groups=out_channels)
         
         self.bnr = nn.Sequential(nn.BatchNorm2D(out_channels), nn.GELU())
         self.lastcbr = layers.ConvBNReLU(out_channels, out_channels, 3)
-
+        # CBLKB ------------------------------------------------------
+        
     def forward(self, x):
         z = self.cbr1(x)
         z1 = self.c11(z)
@@ -98,11 +93,9 @@ class FEBranch(nn.Layer):
     def __init__(self, in_channels, mid_channels: list = [16, 32, 64, 128], kernels=7):
         super(FEBranch, self).__init__()
         self.layers = nn.LayerList()
-        # self.layers.append(nn.Sequential(layers.ConvBNReLU(in_channels, mid_channels[0], 7, 3), layers.ConvBNReLU(mid_channels[0], mid_channels[0], 3)))
         in_channels = 3
         for c in mid_channels:
-            # self.layers.append(nn.Sequential(LKBlock(in_channels, c), GAM(c)))
-            self.layers.append(SLKBlock(in_channels, c, kernels))
+            self.layers.append(FEAA(in_channels, c, kernels))
             in_channels = c
 
     def forward(self, x):
@@ -112,9 +105,9 @@ class FEBranch(nn.Layer):
             y = layer(y)
             res.append(y)
         return res
-
-class PSBFA(nn.Layer):
-    #pseudo siamese bi-temporal feature assimilating module
+    
+class PSAA(nn.Layer):
+    #pseudo siamese assimilating assistant module
     def __init__(self, mid_channels=[64, 128, 256, 512], kernels=7):
         super().__init__()
         self.branch1 = FEBranch(3, mid_channels, kernels)
@@ -128,27 +121,6 @@ class PSBFA(nn.Layer):
         for i, j in zip(y1, y2):
             z = i + j
             res.append(z)
-        return res
-
-
-class PSBFE(nn.Layer):
-    #pseudo siamese bi-temporal feature extraction module
-    def __init__(self, in_channels, mid_channels: list = [16, 32, 64, 128], kernels=7):
-        super().__init__()
-        self.layers = nn.LayerList()
-        # self.layers.append(nn.Sequential(layers.ConvBNReLU(in_channels, mid_channels[0], 7, 3), layers.ConvBNReLU(mid_channels[0], mid_channels[0], 3)))
-        in_channels = 3
-        for c in mid_channels:
-            # self.layers.append(nn.Sequential(LKBlock(in_channels, c), GAM(c)))
-            self.layers.append(BFIB(in_channels, c, kernels))
-            in_channels = c
-
-    def forward(self, x):
-        y = x
-        res = []
-        for layer in self.layers:
-            y = layer(y)
-            res.append(y)
         return res
 
 class STAF(nn.Layer):
@@ -166,11 +138,6 @@ class STAF(nn.Layer):
         self.tdc11 = nn.Conv2D(out_channels, out_channels, 1, 1)
         self.tddsc = nn.Conv2D(out_channels, out_channels, 7, 1, 3, groups=out_channels)
         self.tdcbr2 = layers.ConvBNReLU(out_channels, out_channels, 3)
-
-        # self.alpha = self.create_parameter(
-        #     shape=[1],
-        #     dtype='float32',
-        #     default_initializer=nn.initializer.Constant(0.5))
 
     def forward(self, x1, x2):
         y1 = self.conv1(x1)

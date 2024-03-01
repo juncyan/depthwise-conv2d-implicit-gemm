@@ -12,45 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
-import cv2
-import numpy as np
-import time
+from pslknet.model import LKPSNet
 import paddle
-import paddle.nn.functional as F
-import argparse
-import random
-import os
-import numpy as np
-import paddle
-from paddleseg.models.losses import BCELoss
-from paddleseg.transforms import Resize
-
-from datasets.dataloader import DataReader, TestReader
+from datasets.dataloader import TestReader
 from work.predict import predict
-from common import Args
-from paddleseg.utils import TimeAverager
-from common import Metrics
-from common.logger import load_logger
-from cd_models.stanet import STANet
-from pslknet.model import PSLKNet
 
-
-
-# dataset_name = "LEVIR_c"
-# dataset_name = "GVLM_CD_d"
-dataset_name = "CLCD"
-# dataset_name = "SYSCD_d"
+# dataset_name = "LEVIR_CD"
+# dataset_name = "GVLM_CD"
+# dataset_name = "CLCD"
+dataset_name = "SYSU_CD"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 num_classes = 2
+datatest = TestReader(dataset_path,"test",en_concat=True)
 
-model = STANet(3,2)
+model = LKPSNet()
 
-
-datatest = TestReader(dataset_path,"test",en_concat=False)
-
-if __name__ == "__main__":
-    print("test")
-    weight_path = r"/home/jq/Code/paddle/output/clcd/STANet_2024_01_30_10/epoch_100_model.pdparams"
-    predict(model, datatest, weight_path, datatest.data_name)
+weight_path = r"/home/jq/Code/paddle/output/sysu_cd/PSLKNet_ak9_2024_02_21_09/PSLKNet_ak9_best.pdparams"
+predict(model, datatest, weight_path)

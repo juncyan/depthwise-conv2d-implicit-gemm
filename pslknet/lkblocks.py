@@ -29,7 +29,7 @@ class Lark(nn.Layer):
         self.bn = nn.BatchNorm2D(in_channels)
         self.se = SEModule(in_channels)
         self.c1 = nn.Conv2D(in_channels, in_channels, 1)
-        self.gelu = nn.GELU(in_channels)
+        self.gelu = nn.GELU()
         self.c2 = nn.Conv2D(in_channels, in_channels, 1)
     
     def forward(self, x):
@@ -44,14 +44,14 @@ class Lark(nn.Layer):
 
 class ConvNeXt(nn.Layer):
     
-    def __init__(self, in_channels, kernel=7,layer_scale_init_value=1e-6):
+    def __init__(self, in_channels, kernel=7,layer_scale_init_value=-1e-6):
         super().__init__()
-        self.dwconv = nn.Conv2D(in_channels, in_channels, kernel_size=kernel, padding=3, groups=in_channels) # depthwise conv
+        self.dwconv = nn.Conv2D(in_channels, in_channels, kernel_size=kernel, padding=kernel//2, groups=in_channels) # depthwise conv
         self.norm = nn.BatchNorm2D(in_channels,epsilon=1e-6)
-        self.pwconv1 = nn.Linear(in_channels, 4 * in_channels) # pointwise/1x1 convs, implemented with linear layers
+        self.pwconv1 = nn.Conv2D(in_channels, 4 * in_channels, 1) # pointwise/1x1 convs, implemented with linear layers
         self.act = nn.GELU()
         
-        self.pwconv2 = nn.Linear(4 * in_channels, in_channels)
+        self.pwconv2 = nn.Conv2D(4 * in_channels, in_channels, 1)
         self.gamma = paddle.create_parameter([in_channels], dtype='float32',default_initializer=nn.initializer.Constant(layer_scale_init_value)
                                              ) if layer_scale_init_value > 0 else None
         
@@ -59,14 +59,18 @@ class ConvNeXt(nn.Layer):
     def forward(self, x):
         input = x
         x = self.dwconv(x)
-        x = x.transpose(0, 2, 3, 1) # (N, C, H, W) -> (N, H, W, C)
-        x = self.norm(x)
+        # x = self.norm(x)
+        # n,c,h,w = x.shape
+        # x = paddle.reshape(x, [n,c,h*w])#x.permute(0, 2, 3, 1) # (N, C, H, W) -> (N, H, W, C)
+        x = self.norm(x) 
+        # print(x.shape, self.gamma.shape)
         x = self.pwconv1(x)
         x = self.act(x)
         x = self.pwconv2(x)
+        
         if self.gamma is not None:
             x = self.gamma * x
-        x = x.transpose(0, 3, 1, 2) # (N, H, W, C) -> (N, C, H, W)
+        # x = paddle.reshape(x, [n,c,h,w])#x.permute(0, 3, 1, 2) # (N, H, W, C) -> (N, C, H, W)
 
         x = input + x
         return x
@@ -91,7 +95,7 @@ class CBLKBlock(nn.Layer):
         res = self.cbr(my)
         return res
 
-LKBlock = RepLK
+LKBlock = ConvNeXt
 
 class LKFE(nn.Layer):
     #large kernel feature extraction
@@ -140,10 +144,10 @@ class FEAA(nn.Layer):
     def forward(self, x):
         y = self.cbr1(x)
         y = self.lk(y)
-        return self.lastcbr(self.bnr(y))
+        return self.lastcbr(y)
 
 class BFELKB(nn.Layer):
-    #bi-temporal feature integrating block
+    #bi-temporal feature extraction based large kernel block
     def __init__(self, in_channels, out_channels, kernels = 7, stride=2):
         super().__init__()
         self.fe = LKFE(in_channels, kernels)

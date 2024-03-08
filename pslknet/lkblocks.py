@@ -95,7 +95,7 @@ class CBLKBlock(nn.Layer):
         res = self.cbr(my)
         return res
 
-LKBlock = ConvNeXt
+LKBlock = CBLKBlock
 
 class LKFE(nn.Layer):
     #large kernel feature extraction

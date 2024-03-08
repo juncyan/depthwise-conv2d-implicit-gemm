@@ -16,7 +16,7 @@ from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
 from pslknet.model import LKPSNet
-from pslknet.abliation import LKPSNet_ConX
+from pslknet.abliation import LKPSNet_k27
 
 
 # 参数、优化器及损失
@@ -25,8 +25,8 @@ iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_CD"
-dataset_name = "GVLM_CD"
-# dataset_name = "CLCD"
+# dataset_name = "GVLM_CD"
+dataset_name = "CLCD"
 # dataset_name = "SYSU_CD"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
@@ -43,7 +43,7 @@ num_classes = 2
 # model = FCCDN(3,2)
 
 
-model = LKPSNet_ConX()
+model = LKPSNet_k27()
 
 
 model_name = model.__str__().split("(")[0]

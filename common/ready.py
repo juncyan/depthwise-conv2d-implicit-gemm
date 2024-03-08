@@ -9,7 +9,7 @@ __all__ = ['Args', 'setup_train']
 class Args():
     def __init__(self, dst_dir, model_name):
         # [epoch, loss, acc, miou, mdice,kappa,macro_f1]
-        demo_predict_data_headers = ["epoch", "loss", "acc", "miou", "recall", "Kappa", 'Macro_f1']
+        demo_predict_data_headers = ["epoch", "loss", "Kappa", "miou", "acc", "recall", 'Macro_f1']
         self.img_ab_concat = False
         self.en_load_edge = False
         self.num_classes = 0

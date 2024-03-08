@@ -12,9 +12,9 @@ from .lkblocks import *
 from .utils import *
 
 
-class LKPSNet_ConX(nn.Layer):
+class LKPSNet_k27(nn.Layer):
     #large kernel pseudo siamese network
-    def __init__(self, in_channels=3, kernels=9):
+    def __init__(self, in_channels=3, kernels=27):
         super().__init__()
 
         self.fa = PSAA([64, 128, 256, 512], kernels)

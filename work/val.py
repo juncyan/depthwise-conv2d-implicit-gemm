@@ -122,5 +122,6 @@ def evaluate(model, eval_dataset, args=None):
         args.logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
         args.logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
         args.logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
-    save_numpy_as_csv(args.metric_path, np.array([args.epoch, args.loss, miou, acc, kappa, recall, macro_f1]))
+        
+    save_numpy_as_csv(args.metric_path, np.array([args.epoch, args.loss, kappa, miou, acc, recall, macro_f1]))
     return miou

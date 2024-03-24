@@ -32,11 +32,11 @@ class RepConv(Reparams):
         self.lkc = nn.Conv2D(in_channels,in_channels,self.sk,padding=self.lk//2,dilation=dilation,groups=in_channels)
     
     def forward(self, x):
-        # if not self.training and hasattr(self, "repc"):
-        #     # print("repc")
-        #     y = self.repc(x)
-        #     y = F.relu(y)
-        #     return y
+        if not self.training and hasattr(self, "repc"):
+            print("repc")
+            y = self.repc(x)
+            y = F.relu(y)
+            return y
         y1 = self.conv1(x)
         y2 = self.conv2(x)
         y3 = self.conv3(x)

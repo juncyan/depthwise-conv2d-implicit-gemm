@@ -28,5 +28,5 @@ datatest = TestReader(dataset_path,"test",en_concat=True)
 
 model = LKPSNet_repc()
 
-weight_path = r"output/levir_cd/LKPSNet_repc_2024_03_23_10/LKPSNet_repc_best.pdparams"
+weight_path = r"output/levir_cd/LKPSNet_repc_2024_03_23_10/epoch_200_model.pdparams"
 predict(model, datatest, weight_path)

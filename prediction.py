@@ -13,20 +13,20 @@
 # limitations under the License.
 
 
-from pslknet.model import LKPSNet
+from pslknet.model import LKPSNet_repc
 import paddle
 from datasets.dataloader import TestReader
 from work.predict import predict
 
-# dataset_name = "LEVIR_CD"
+dataset_name = "LEVIR_CD"
 # dataset_name = "GVLM_CD"
 # dataset_name = "CLCD"
-dataset_name = "SYSU_CD"
+# dataset_name = "SYSU_CD"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 num_classes = 2
 datatest = TestReader(dataset_path,"test",en_concat=True)
 
-model = LKPSNet()
+model = LKPSNet_repc()
 
-weight_path = r"/home/jq/Code/paddle/output/sysu_cd/PSLKNet_ak9_2024_02_21_09/PSLKNet_ak9_best.pdparams"
+weight_path = r"output/levir_cd/LKPSNet_repc_2024_03_23_10/LKPSNet_repc_best.pdparams"
 predict(model, datatest, weight_path)

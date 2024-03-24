@@ -1,28 +1,23 @@
-import os
-import glob
-import pandas as pd
-import numpy as np
+import paddle
+import paddle.nn as nn
+from paddleseg.models import layers
+from pslknet.cblkb import RepConv, RepC3, RepConvBn
 
+if __name__ == "__main__":
+    x = paddle.rand([1,128,256,256]).cuda()
+    m = RepConv(128).to('gpu:0')
+    y1 = m(x)
+    m.eval()
+    paddle.save(m.state_dict(), "testrepc.pdparams")
+    layer_state_dict = paddle.load("testrepc.pdparams")
+    # print(layer_state_dict)
 
-bdir = "output/syscd_d"
-fs = glob.glob(os.path.join(bdir, "PSLKNet*"))
-s = np.array([[]])
-idx = []
-for f in fs:
-    csvf = glob.glob(os.path.join(f, '*.csv'))[0]
-    df = pd.read_csv(csvf)
-    name = csvf.split("PSLKNet_")[1]
-    name = name.split("_")[0]
-    idx.append(name)
-    print(df.keys())
-    c = df.loc[df['acc'].idxmax()]
-    data = c[['recall', 'acc', 'miou', 'Kappa', 'Macro_f1']].values
-    s = np.append(s, data)
-s = np.reshape(s, [-1,5])
-print(idx)
-w = pd.DataFrame(s, columns=['Kappa', 'MIoU', "MPa", "Recall", "F1"], index=idx)
-w.to_csv("clcd_kernelsize_test.csv")
-print(w)
+    # with paddle.no_grad():
+    m.set_state_dict(layer_state_dict)
+    m.eval()
+
+    y2 = m(x)
+    print(y1-y2)
 
 
 

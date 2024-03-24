@@ -202,11 +202,10 @@ def train(model,
         #     break 
     # Calculate flops.
     # if not "precision" == 'fp16':
-    
     test(model, test_data_loader, args)
 
-    lsp = os.path.join(args.save_dir, f'epoch_{iters}_model.pdparams')
-    test_last(model, test_data_loader, args, lsp)
+    # lsp = os.path.join(args.save_dir, f'epoch_{iters}_model.pdparams')
+    # test_last(model, test_data_loader, args, lsp)
     logging.shutdown()
     
     # Sleep for a second to let dataloader release resources.

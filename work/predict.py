@@ -74,6 +74,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     evaluator = Metrics(num_class=num_classes)
+    model.eval()
     with paddle.no_grad():
         for _, data in enumerate(loader):
 
@@ -213,6 +214,7 @@ def test(model, dataset, args):
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     evaluator = Metrics(num_class=args.num_classes)
+    model.eval()
     with paddle.no_grad():
         for _, data in enumerate(dataset):
 

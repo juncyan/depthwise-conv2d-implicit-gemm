@@ -9,7 +9,7 @@ from models.backbone.resnet import ResbackBone, ResNet
 from .blocks import *
 from .utils import *
 
-class LKPSNet(nn.Layer):
+class LKPSNet_repc(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=9):
         super().__init__()
@@ -31,6 +31,16 @@ class LKPSNet(nn.Layer):
         self.up3 = UpBlock(128+64, 64)
 
         self.classiier = layers.ConvBNAct(64, 2, 7, act_type="sigmoid")
+    
+    def eval(self):
+        for layer in self.sublayers():
+            layer.eval()
+        return super().eval()
+    
+    # def train(self):
+    #     for layer in self.sublayers():
+    #         layer.train()
+    #     return super().train()
     
     def forward(self, x):
         x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]

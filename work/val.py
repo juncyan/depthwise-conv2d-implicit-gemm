@@ -50,7 +50,7 @@ def evaluate(model, eval_dataset, args=None):
         float: The mIoU of validation datasets.
         float: The accuracy of validation datasets.
     """
-    model.eval()
+    # 
     # batch_sampler = paddle.io.BatchSampler(
     #     eval_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
     #
@@ -64,7 +64,7 @@ def evaluate(model, eval_dataset, args=None):
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     evaluator = Metrics(num_class=args.num_classes)
-
+    model.eval()
     with paddle.no_grad():
         for _, data in enumerate(eval_dataset):
             reader_cost_averager.record(time.time() - batch_start)

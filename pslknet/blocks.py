@@ -2,7 +2,7 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddleseg.models.layers as layers
-
+from .cblkb import RepConv, RepC3
 
 class BFELKB(nn.Layer):
     #bi-temporal feature integrating block
@@ -52,20 +52,24 @@ class CBLKBlock(nn.Layer):
         super().__init__()
         # print(mid_c, in_channels)
         self.c1 = nn.Conv2D(in_channels, in_channels, 1)
+        self.bn1 = nn.BatchNorm2D(in_channels)
 
-        self.lkcs = nn.Conv2D(in_channels, in_channels, kernels, padding=kernels//2, groups=in_channels)
+        self.lkcs = RepConv(in_channels, 9, 4)#nn.Conv2D(in_channels, in_channels, kernels, padding=kernels//2, groups=in_channels)
         self.bn = nn.BatchNorm2D(in_channels)
         self.gelu = nn.GELU()
 
-        self.cbr = layers.ConvBNReLU(in_channels, in_channels, 3)
-    
+        self.cbr1 = layers.ConvBNReLU(in_channels, in_channels, 3)
+        # self.br = nn.ReLU()#nn.Sequential(nn.BatchNorm2D(in_channels), nn.ReLU())
+        
     def forward(self, x):
         y1 = self.c1(x)
+        y1 = self.bn1(y1)
         y2 = self.lkcs(x)
         y = y1 + y2
         my = self.gelu(self.bn(y))
-        res = self.cbr(my)
-        return res
+        y = self.cbr1(my)
+        # y = self.br(y)
+        return y
 
 class FEAA(nn.Layer):
     #assimilating assistant feature extraction
@@ -80,6 +84,7 @@ class FEAA(nn.Layer):
         self.bnr = nn.Sequential(nn.BatchNorm2D(out_channels), nn.GELU())
         self.lastcbr = layers.ConvBNReLU(out_channels, out_channels, 3)
         # CBLKB ------------------------------------------------------
+        # self.cblk = CBLKBlock(out_channels)
         
     def forward(self, x):
         z = self.cbr1(x)
@@ -87,6 +92,8 @@ class FEAA(nn.Layer):
         z2 = self.gck(z)
         y = z1 + z2
         return self.lastcbr(self.bnr(y))
+        # z1 = self.cblk(z)
+        return z1
 
 
 class FEBranch(nn.Layer):

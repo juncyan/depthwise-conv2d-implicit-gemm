@@ -15,8 +15,6 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from pslknet.model import LKPSNet_repc_Siam
-from pslknet.abliation import LKPSNet_k27
 
 
 # 参数、优化器及损失
@@ -40,10 +38,10 @@ num_classes = 2
 # model = DSAMNet(3,2)
 # model = P2V(3, 2)
 # model = FCSiamConc(3,2)
-# model = FCCDN(3,2)
+model = FCCDN(3,2)
 
 
-model = LKPSNet_repc_Siam()
+
 
 
 model_name = model.__str__().split("(")[0]

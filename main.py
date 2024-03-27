@@ -15,7 +15,7 @@ from paddleseg.transforms import Resize
 from datasets.dataloader import DataReader, TestReader
 from work.train import train
 from common import Args
-from pslknet.model import LKPSNet_repc
+from pslknet.model import LKPSNet_repc_Siam
 from pslknet.abliation import LKPSNet_k27
 
 
@@ -24,9 +24,9 @@ batch_size = 8
 iters = 200 #epochs * 445 // batch_size
 base_lr = 2e-4
 
-# dataset_name = "LEVIR_CD"
-# dataset_name = "GVLM_CD"
-dataset_name = "CLCD_c"
+dataset_name = "LEVIR_CD"
+#dataset_name = "GVLM_CD"
+# dataset_name = "CLCD_c"
 # dataset_name = "SYSU_CD"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
@@ -43,7 +43,7 @@ num_classes = 2
 # model = FCCDN(3,2)
 
 
-model = LKPSNet_repc()
+model = LKPSNet_repc_Siam()
 
 
 model_name = model.__str__().split("(")[0]

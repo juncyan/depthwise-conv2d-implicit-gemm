@@ -9,12 +9,12 @@ from models.backbone.resnet import ResbackBone, ResNet
 from .blocks import *
 from .utils import *
 
-class LKPSNet_repc(nn.Layer):
+class LKPSNet_repc_Siam(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=9):
         super().__init__()
 
-        self.fa = PSAA([64, 128, 256, 512], kernels)
+        self.fa = SAA([64, 128, 256, 512], kernels)
 
         self.stage1 = STAF(in_channels, 64, kernels)
         self.stage2 = BFELKB(64, 128, kernels)

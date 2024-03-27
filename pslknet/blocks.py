@@ -130,6 +130,23 @@ class PSAA(nn.Layer):
             res.append(z)
         return res
 
+class SAA(nn.Layer):
+    #pseudo siamese assimilating assistant module
+    def __init__(self, mid_channels=[64, 128, 256, 512], kernels=7):
+        super().__init__()
+        self.branch1 = FEBranch(3, mid_channels, kernels)
+        # self.branch2 = FEBranch(3, mid_channels, kernels)
+
+    def forward(self, x1, x2):
+        # x1, x2 = x[:, :3, :, :], x[:, 3:, :, :]
+        y1 = self.branch1(x1)
+        y2 = self.branch1(x2)
+        res = []
+        for i, j in zip(y1, y2):
+            z = i + j
+            res.append(z)
+        return res
+
 class STAF(nn.Layer):
     #Spatial and Temporal Adaptive Fusion Module
     def __init__(self, in_channels=3, out_channels=64, kernels=7):

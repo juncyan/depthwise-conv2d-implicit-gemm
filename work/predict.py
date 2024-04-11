@@ -22,7 +22,7 @@ import glob
 import pandas as pd
 
 from paddleseg.utils import TimeAverager, op_flops_funs
-from common import Metrics
+from common.cdmetric import ConfuseMatrixMeter
 from common.logger import load_logger
 from common.csver import cls_count
 from work.count_params import flops
@@ -73,7 +73,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
-    evaluator = Metrics(num_class=num_classes)
+    evaluator = ConfuseMatrixMeter(num_class=num_classes)
     model.eval()
     with paddle.no_grad():
         for _, data in enumerate(loader):
@@ -98,8 +98,6 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[0]
 
-            evaluator.add_batch(pred, label)
-
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
             batch_cost = batch_cost_averager.get_average()
@@ -118,6 +116,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
             label = label.squeeze()
             label = np.array(label.cpu())
 
+            evaluator.update_cm(pred.cpu().numpy(), label)
             for idx, ipred in enumerate(pred):
                 ipred = ipred.cpu().numpy()
                 if (np.max(ipred) != np.min(ipred)):
@@ -133,29 +132,15 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
             #         img = color_label[ipred]
             #         cv2.imwrite(f"{img_dir}/{name[idx]}", img)
 
-    evaluator.calc()
-    miou = evaluator.Mean_Intersection_over_Union()
-    acc = evaluator.Pixel_Accuracy()
-    class_iou = evaluator.Intersection_over_Union()
-    class_precision = evaluator.Class_Precision()
-    kappa = evaluator.Kappa()
-    recall = evaluator.Mean_Recall()
-    class_dice = evaluator.Dice()
-    macro_f1 = evaluator.Macro_F1()
-    class_recall = evaluator.Recall()
+    scores = evaluator.get_scores()
+    evaluator.clear()
     # print(batch_cost, reader_cost)
 
     infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(dataset), batch_cost, reader_cost)
     logger.info(infor)
-    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Recall: {:.4f}, Macro_F1: {:.4f}".format(
-            miou, acc, kappa, recall, macro_f1)
-    logger.info(infor)
-
-    logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
-    logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
-    logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-    logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
-
+    
+    logger.info(str(scores))
+    
     if img_ab_concat:
         images = data['img'].cuda()
         _, c, h, w = images.shape
@@ -213,7 +198,7 @@ def test(model, dataset, args):
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
-    evaluator = Metrics(num_class=args.num_classes)
+    evaluator = ConfuseMatrixMeter(num_class=args.num_classes)
     model.eval()
     with paddle.no_grad():
         for _, data in enumerate(dataset):
@@ -229,7 +214,7 @@ def test(model, dataset, args):
                 
             else:
                 img1 = data['img1'].cuda()
-                img2 = data['img1'].cuda()
+                img2 = data['img2'].cuda()
                 pred = model(img1, img2)
 
             if hasattr(model, "predict"):
@@ -237,8 +222,6 @@ def test(model, dataset, args):
             else:
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[args.pred_idx]
-
-            evaluator.add_batch(pred, label)
 
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
@@ -258,6 +241,7 @@ def test(model, dataset, args):
             label = label.squeeze()
             label = np.array(label.cpu())
 
+            evaluator.update_cm(pred.cpu().numpy(), label)
             for idx, ipred in enumerate(pred):
                 ipred = ipred.cpu().numpy()
                 if (np.max(ipred) != np.min(ipred)):
@@ -267,28 +251,14 @@ def test(model, dataset, args):
                     img = color_label[ipred]
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)
 
-    evaluator.calc()
-    miou = evaluator.Mean_Intersection_over_Union()
-    acc = evaluator.Pixel_Accuracy()
-    class_iou = evaluator.Intersection_over_Union()
-    class_precision = evaluator.Class_Precision()
-    kappa = evaluator.Kappa()
-    recall = evaluator.Mean_Recall()
-    class_dice = evaluator.Dice()
-    macro_f1 = evaluator.Macro_F1()
-    class_recall = evaluator.Recall()
-    # print(batch_cost, reader_cost)
+
+    scroes = evaluator.get_scores()
+    evaluator.clear()
 
     infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(dataset), batch_cost, reader_cost)
     logger.info(infor)
-    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Recall: {:.4f}, Macro_F1: {:.4f}".format(
-            miou, acc, kappa, recall, macro_f1)
-    logger.info(infor)
-
-    logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
-    logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
-    logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-    logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
+    
+    logger.info(str(scroes))
 
     if img_ab_concat:
         images = data['img'].cuda()

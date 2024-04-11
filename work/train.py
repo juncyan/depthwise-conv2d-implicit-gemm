@@ -134,7 +134,7 @@ def train(model,
                 
             else:
                 img1 = data['img1'].cuda()
-                img2 = data['img1'].cuda()
+                img2 = data['img2'].cuda()
                 pred = model(img1, img2)
             
             if hasattr(model, "loss"):

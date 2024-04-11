@@ -47,9 +47,9 @@ class AverageMeter(object):
 ###################      cm metrics      ###################
 class ConfuseMatrixMeter(AverageMeter):
     """Computes and stores the average and current value"""
-    def __init__(self, n_class):
+    def __init__(self, num_class):
         super(ConfuseMatrixMeter, self).__init__()
-        self.n_class = n_class
+        self.n_class = num_class
 
     def update_cm(self, pr, gt, weight=1):
         """获得当前混淆矩阵，并计算当前F1得分，并更新混淆矩阵"""

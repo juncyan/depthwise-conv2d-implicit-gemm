@@ -39,7 +39,7 @@ class Args():
         self.loss = 0
         self.logger = load_logger(log_path)
         self.logger.info("log save at {}, metric save at {}, weight save at {}".format(log_path, self.metric_path, self.best_model_path))
-        writer_csv(self.metric_path, headers=demo_predict_data_headers)
+        # writer_csv(self.metric_path, headers=demo_predict_data_headers)
 
 
 def setup_train(args, model):

@@ -18,14 +18,14 @@ from common import Args
 
 
 # 参数、优化器及损失
-batch_size = 8
-iters = 200 #epochs * 445 // batch_size
+batch_size = 4
+iters = 100 #epochs * 445 // batch_size
 base_lr = 2e-4
 
-dataset_name = "LEVIR_CD"
-#dataset_name = "GVLM_CD"
-# dataset_name = "CLCD_c"
-# dataset_name = "SYSU_CD"
+# dataset_name = "LEVIR_CD"
+dataset_name = "GVLM_CD"
+dataset_name = "CLCD_c"
+dataset_name = "SYSU_CD"
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
@@ -38,7 +38,7 @@ num_classes = 2
 # model = DSAMNet(3,2)
 # model = P2V(3, 2)
 # model = FCSiamConc(3,2)
-model = FCCDN(3,2)
+model = STANet(3,2)
 
 
 

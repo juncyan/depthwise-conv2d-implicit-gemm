@@ -18,9 +18,10 @@ import numpy as np
 import time
 import paddle
 import paddle.nn.functional as F
+import pandas as pd
 
 from paddleseg.utils import TimeAverager
-from common import Metrics, save_numpy_as_csv
+from common.cdmetric import ConfuseMatrixMeter
 
 np.set_printoptions(suppress=True)
 
@@ -63,13 +64,13 @@ def evaluate(model, eval_dataset, args=None):
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
-    evaluator = Metrics(num_class=args.num_classes)
+    evaluator = ConfuseMatrixMeter(num_class=args.num_classes)
     model.eval()
     with paddle.no_grad():
         for _, data in enumerate(eval_dataset):
             reader_cost_averager.record(time.time() - batch_start)
 
-            label = data['label'].astype('int64').cuda()
+            label = data['label'].astype('int64')
             
             if args.img_ab_concat:
                 images = data['img'].cuda()
@@ -77,7 +78,7 @@ def evaluate(model, eval_dataset, args=None):
                 
             else:
                 img1 = data['img1'].cuda()
-                img2 = data['img1'].cuda()
+                img2 = data['img2'].cuda()
                 pred = model(img1, img2)
 
             
@@ -87,7 +88,16 @@ def evaluate(model, eval_dataset, args=None):
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[args.pred_idx]
 
-            evaluator.add_batch(pred, label)
+            if pred.shape[1] > 1:
+                pred = paddle.argmax(pred, axis=1)
+            pred = pred.squeeze().cpu()
+
+            if label.shape[1] > 1:
+                label = paddle.argmax(label, 1)
+            label = label.squeeze()
+            label = np.array(label.cpu())
+
+            evaluator.update_cm(pred.numpy(), label)
 
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
@@ -98,30 +108,36 @@ def evaluate(model, eval_dataset, args=None):
             batch_cost_averager.reset()
             batch_start = time.time()
 
-    evaluator.calc()
-    miou = evaluator.Mean_Intersection_over_Union()
-    acc = evaluator.Pixel_Accuracy()
-    class_iou = evaluator.Intersection_over_Union()
-    class_precision = evaluator.Class_Precision()
-    kappa = evaluator.Kappa()
-    recall = evaluator.Mean_Recall()
-    macro_f1 = evaluator.Macro_F1()
-    class_recall = evaluator.Recall()
-    class_dice = evaluator.Dice()
+    # evaluator.calc()
+    # miou = evaluator.Mean_Intersection_over_Union()
+    # acc = evaluator.Pixel_Accuracy()
+    # class_iou = evaluator.Intersection_over_Union()
+    # class_precision = evaluator.Class_Precision()
+    # kappa = evaluator.Kappa()
+    # recall = evaluator.Mean_Recall()
+    # macro_f1 = evaluator.Macro_F1()
+    # class_recall = evaluator.Recall()
+    # class_dice = evaluator.Dice()
     # print(batch_cost, reader_cost)
+    scores = evaluator.get_scores()
+    evaluator.clear()
+
+    miou = scores['miou']
+    acc = scores['acc']
+    mf1 = scores['mf1']
+
     if args.logger != None:
         infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(eval_dataset), batch_cost, reader_cost)
         args.logger.info(infor)
         # infor = "[EVAL] mIoU: {:.4f} Acc: {:.4f} Kappa: {:.4f} mdice: {:.4f} Macro_F1: {:.4f}".format(
         #      miou, acc, kappa, mdice, macro_f1)
         # args.logger.info(infor)
-        args.logger.info("[METRICS] Acc:{:.4}, mIoU:{:.4}, recall:{:.4},kappa:{:.4},Macro_f1:{:.4}".format(
-            acc,miou,recall,kappa,macro_f1))
+        args.logger.info("[METRICS] Acc:{:.4}, mIoU:{:.4},Macro_f1:{:.4}".format(acc,miou,mf1))
+    
+    d = pd.DataFrame([scores])
+    if os.path.exists(args.metric_path):
+        d.to_csv(args.metric_path,mode='a', index=False, header=False,float_format="%.4f")
+    else:
+        d.to_csv(args.metric_path, index=False,float_format="%.4f")
         
-        args.logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
-        args.logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
-        args.logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-        args.logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
-        
-    save_numpy_as_csv(args.metric_path, np.array([args.epoch, args.loss, kappa, miou, acc, recall, macro_f1]))
     return miou

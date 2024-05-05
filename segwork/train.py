@@ -4,8 +4,8 @@ import time
 import numpy as np
 import paddle
 from paddleseg.utils import worker_init_fn
-from work.val import evaluate
-from work.predict import test
+from segwork.val import evaluate
+from segwork.predict import test
 
 def check_logits_losses(logits_list, losses):
     len_logits = len(logits_list)

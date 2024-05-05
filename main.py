@@ -41,9 +41,6 @@ num_classes = 2
 model = STANet(3,2)
 
 
-
-
-
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)
 args.batch_size = batch_size

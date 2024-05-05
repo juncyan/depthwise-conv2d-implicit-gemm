@@ -5,10 +5,8 @@ import paddle
 import logging
 
 from datasets.segloader import DataReader, TestReader
-from paddleseg.models.backbones import Xception65_deeplab
-from paddleseg.models.unet import UNet
-from paddleseg.models.deeplab import DeepLabV3P
-from work.train import train
+from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab
+from segwork.train import train
 from common import Args
 
 
@@ -18,12 +16,17 @@ iters = 200
 base_lr = 2e-4
 
 dataset_name = "MacaoLC"
-dataset_path = '~/data/{}'.format(dataset_name)
+dataset_path = '/home/jq/data/{}'.format(dataset_name)
 
 
 num_classes = 5
 
-model = DeepLabV3P(num_classes=num_classes, backbone=Xception65_deeplab(), backbone_indices=(0,1))
+# res = ResNet50_vd()
+# model = UNet(num_classes, in_channels=6)
+# model = UNetPlusPlus(num_classes, 6)
+# model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
+model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=3))
+# model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

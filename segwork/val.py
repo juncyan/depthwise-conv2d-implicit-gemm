@@ -4,6 +4,8 @@ import numpy as np
 import time
 import paddle
 import paddle.nn.functional as F
+import paddle.tensor
+import pandas as pd
 
 from paddleseg.utils import TimeAverager
 from common import Metrics, save_numpy_as_csv
@@ -24,7 +26,6 @@ def evaluate(model, eval_dataset, args=None):
             reader_cost_averager.record(time.time() - batch_start)
 
             label = data['label'].astype('int64').cuda()
-            
             images = data['img'].cuda()
             pred = model(images)
                 
@@ -45,25 +46,20 @@ def evaluate(model, eval_dataset, args=None):
             batch_cost_averager.reset()
             batch_start = time.time()
 
-    evaluator.calc()
-    miou = evaluator.Mean_Intersection_over_Union()
-    acc = evaluator.Pixel_Accuracy()
-    class_iou = evaluator.Intersection_over_Union()
-    class_precision = evaluator.Class_Precision()
-    kappa = evaluator.Kappa()
-    recall = evaluator.Mean_Recall()
-    macro_f1 = evaluator.Macro_F1()
-    class_recall = evaluator.Recall()
-    class_dice = evaluator.Dice()
+    metrics = evaluator.Get_Metric()
+    pa = metrics["pa"]
+    miou = metrics["miou"]
+    mf1 = metrics["mf1"]
+    kappa = metrics["kappa"]
+
     if args.logger != None:
         infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(eval_dataset), batch_cost, reader_cost)
         args.logger.info(infor)
-        args.logger.info("[METRICS] Acc:{:.4},mIoU:{:.4}, recall:{:.4},kappa:{:.4},Macro_f1:{:.4}".format(
-            acc,miou,recall,kappa,macro_f1))
+        args.logger.info("[METRICS] PA:{:.4},mIoU:{:.4},kappa:{:.4},Macro_f1:{:.4}".format(pa,miou,kappa,mf1))
         
-        args.logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
-        args.logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
-        args.logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-        args.logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
-    save_numpy_as_csv(args.metric_path, np.array([args.epoch, args.loss, miou, acc, kappa, recall, macro_f1]))
+    d = pd.DataFrame([metrics])
+    if os.path.exists(args.metric_path):
+        d.to_csv(args.metric_path,mode='a', index=False, header=False,float_format="%.4f")
+    else:
+        d.to_csv(args.metric_path, index=False,float_format="%.4f")
     return miou

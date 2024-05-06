@@ -33,10 +33,9 @@ def train(model,
           optimizer=None,
           args=None,
           iters=10000,
-          save_interval=1000,
           num_workers=0):
 
-    model = model.to('gpu')
+    model = model.to(args.device)
 
     model.train()
   

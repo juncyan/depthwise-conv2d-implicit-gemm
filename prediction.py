@@ -15,7 +15,7 @@
 
 from pslknet.model import LKPSNet_repc
 import paddle
-from datasets.dataloader import TestReader
+from datasets.cdloader import TestReader
 from work.predict import predict
 
 dataset_name = "LEVIR_CD"

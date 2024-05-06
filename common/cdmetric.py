@@ -124,11 +124,11 @@ def cm2score(confusion_matrix):
     fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
 
     #
-    cls_iou = dict(zip(['iou_'+str(i) for i in range(n_class)], iu))
+    cls_iou = dict(zip(['iou_'+str(i) for i in range(n_class)], np.round(iu, 4)))
 
-    cls_precision = dict(zip(['precision_'+str(i) for i in range(n_class)], precision))
-    cls_recall = dict(zip(['recall_'+str(i) for i in range(n_class)], recall))
-    cls_F1 = dict(zip(['F1_'+str(i) for i in range(n_class)], F1))
+    cls_precision = dict(zip(['precision_'+str(i) for i in range(n_class)], np.round(precision, 4)))
+    cls_recall = dict(zip(['recall_'+str(i) for i in range(n_class)], np.round(recall, 4)))
+    cls_F1 = dict(zip(['F1_'+str(i) for i in range(n_class)], np.round(F1, 4)))
 
     score_dict = {'acc': acc, 'miou': mean_iu, 'mf1':mean_F1}
     score_dict.update(cls_iou)

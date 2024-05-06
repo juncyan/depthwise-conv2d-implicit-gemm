@@ -13,7 +13,7 @@ class Metrics(object):
         self.__sum = 0.#np.sum(self.__confusion_matrix)
 
     def Pixel_Accuracy(self):
-        Acc = np.diag(self.__confusion_matrix).sum() / self.__confusion_matrix.sum()
+        Acc = self.__TP.sum() / self.__sum
         return Acc
 
     def Class_Precision(self):
@@ -38,7 +38,7 @@ class Metrics(object):
         return FWIoU
 
     def Kappa(self):
-        P0 = np.sum(self.__TP) / self.__sum
+        P0 = self.Pixel_Accuracy()
         Pe = np.sum(self.__RealP * self.__RealN) / (self.__sum * self.__sum)
         return (P0 - Pe) / (1 - Pe)
 
@@ -64,8 +64,30 @@ class Metrics(object):
         recall = self.__TP / (self.__RealN + 1e-5)
         return recall
     
-    def Mean_Recall(self):
-        return np.nanmean(self.Recall())
+    def Get_Metric(self):
+        self.calc()
+        pa = np.round(self.Pixel_Accuracy(),4)
+        iou = np.round(self.Intersection_over_Union(),4)
+        miou = np.round(np.nanmean(iou),4)
+        prices = np.round(self.Class_Precision(),4)
+        f1 = np.round(self.F1_score(),4)
+        mf1 = np.round(np.nanmean(f1),4)
+        recall = np.round(self.Recall(),4)
+        Pe = np.round(np.sum(self.__RealP * self.__RealN) / (self.__sum * self.__sum),4)
+        kappa =  np.round((pa - Pe) / (1 - Pe),4)
+
+        cls_iou = dict(zip(['iou_'+str(i) for i in range(self.__num_class)], iou))
+        cls_precision = dict(zip(['precision_'+str(i) for i in range(self.__num_class)], prices))
+        cls_recall = dict(zip(['recall_'+str(i) for i in range(self.__num_class)], recall))
+        cls_F1 = dict(zip(['F1_'+str(i) for i in range(self.__num_class)], f1))
+
+        metrics ={"pa":pa, "miou": miou, "mf1":mf1, "kappa":kappa}
+        metrics.update(cls_iou)
+        metrics.update(cls_F1)
+        metrics.update(cls_precision)
+        metrics.update(cls_recall)
+        self.reset()
+        return metrics
 
     def __generate_matrix(self, gt_image, pre_image):
         mask = (gt_image >= 0) & (gt_image < self.__num_class)

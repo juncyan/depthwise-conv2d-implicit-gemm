@@ -18,24 +18,26 @@ base_lr = 2e-4
 dataset_name = "MacaoLC"
 dataset_path = '/home/jq/data/{}'.format(dataset_name)
 
-
-num_classes = 5
+num_classes = 4
 
 # res = ResNet50_vd()
 model = UNet(num_classes, in_channels=3)
 # model = UNetPlusPlus(num_classes, 6)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=3))
-# model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
+# model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)
+args.device = "gpu:0"
 args.batch_size = batch_size
 args.num_classes = num_classes
 args.pred_idx = 0
 args.data_name = dataset_name
 args.img_ab_concat = True
 args.en_load_edge = False
+
+paddle.device.set_device(args.device)
 
 def seed_init(seed=32767):
     random.seed(seed)
@@ -56,6 +58,6 @@ if __name__ == "__main__":
     lr = paddle.optimizer.lr.CosineAnnealingDecay(base_lr, T_max=(iters // 3), last_epoch=0.5)  
     optimizer = paddle.optimizer.Adam(lr, parameters=model.parameters(),) 
 
-    train(model,train_data, val_data, test_data, optimizer, args, iters, 10, 2)
+    train(model,train_data, val_data, test_data, optimizer, args, iters, 2)
 
    

@@ -41,13 +41,9 @@ class DataReader(Dataset):
         A_img = paddle.to_tensor(A_img.transpose(2, 0, 1)).astype('float32')
     
         label = np.array(Image.open(lab_path)) 
-        matches = (label == np.array([0,0,128])).all(axis=-1)
-        label[matches] = np.array([128,128,128])
-        matches = (label == np.array([255,255,255])).all(axis=-1)
-        label[matches] = np.array([0,0,128])
 
         label = one_hot_it(label, self.label_info)
-        label = label[:,:,:5]
+        
         label = np.transpose(label, [2,0,1])
         label = paddle.to_tensor(label).astype('int64')
         data = {"img": A_img, "label": label}
@@ -94,14 +90,9 @@ class TestReader(DataReader):
         A_img = paddle.to_tensor(A_img.transpose(2, 0, 1)).astype('float32')
       
         label = np.array(Image.open(lab_path)) 
-        matches = (label == np.array([0,0,128])).all(axis=-1)
-        label[matches] = np.array([128,128,128])
-        matches = (label == np.array([255,255,255])).all(axis=-1)
-        label[matches] = np.array([0,0,128])
-        
+       
         label = one_hot_it(label, self.label_info)
 
-        label = label[:,:,:5]
         label = np.transpose(label, [2,0,1])
         label = paddle.to_tensor(label).astype('int64')
 

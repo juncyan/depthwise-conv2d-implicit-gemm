@@ -57,7 +57,6 @@ def train(model,
           optimizer=None,
           args=None,
           iters=10000,
-          save_interval=1000,
           num_workers=0):
     """
     Launch training.
@@ -69,7 +68,7 @@ def train(model,
         optimizer (paddle.optimizer.Optimizer): The optimizer.
     """
 
-    model = model.to('gpu')
+    model = model.to(args.device)
 
     model.train()
     # if not os.path.isdir(args.save_dir):
@@ -175,9 +174,9 @@ def train(model,
                 "[TRAIN] iter: {}/{}, loss: {:.4f}, lr: {:.6}, batch_cost: {:.2f}, ips: {:.4f} samples/sec".format(
                     epoch, iters, avg_loss, lr, batch_cost_averager, batch_cost_averager / len(train_dataset)))
 
-        if epoch % save_interval == 0 or epoch == iters:
+        if epoch == iters:
             paddle.save(model.state_dict(),
-                        os.path.join(args.save_dir, f'epoch_{epoch}_model.pdparams'))
+                        os.path.join(args.save_dir, f'last_model.pdparams'))
             
         # if (epoch) % save_interval == 0:
 

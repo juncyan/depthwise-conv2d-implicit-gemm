@@ -22,6 +22,7 @@ import pandas as pd
 
 from paddleseg.utils import TimeAverager
 from common.cdmetric import ConfuseMatrixMeter
+from common.metrics import Metrics
 
 np.set_printoptions(suppress=True)
 
@@ -64,7 +65,7 @@ def evaluate(model, eval_dataset, args=None):
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
-    evaluator = ConfuseMatrixMeter(num_class=args.num_classes)
+    evaluator = Metrics(num_class=args.num_classes)
     model.eval()
     with paddle.no_grad():
         for _, data in enumerate(eval_dataset):
@@ -90,14 +91,13 @@ def evaluate(model, eval_dataset, args=None):
 
             if pred.shape[1] > 1:
                 pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze().cpu()
+            pred = pred.squeeze()
 
             if label.shape[1] > 1:
                 label = paddle.argmax(label, 1)
             label = label.squeeze()
-            label = np.array(label.cpu())
 
-            evaluator.update_cm(pred.numpy(), label)
+            evaluator.add_batch(pred, label)
 
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
@@ -108,33 +108,19 @@ def evaluate(model, eval_dataset, args=None):
             batch_cost_averager.reset()
             batch_start = time.time()
 
-    # evaluator.calc()
-    # miou = evaluator.Mean_Intersection_over_Union()
-    # acc = evaluator.Pixel_Accuracy()
-    # class_iou = evaluator.Intersection_over_Union()
-    # class_precision = evaluator.Class_Precision()
-    # kappa = evaluator.Kappa()
-    # recall = evaluator.Mean_Recall()
-    # macro_f1 = evaluator.Macro_F1()
-    # class_recall = evaluator.Recall()
-    # class_dice = evaluator.Dice()
-    # print(batch_cost, reader_cost)
-    scores = evaluator.get_scores()
-    evaluator.clear()
-
-    miou = scores['miou']
-    acc = scores['acc']
-    mf1 = scores['mf1']
+    metrics = evaluator.Get_Metric()
+    pa = metrics["pa"]
+    miou = metrics["miou"]
+    mf1 = metrics["mf1"]
+    kappa = metrics["kappa"]
 
     if args.logger != None:
         infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(eval_dataset), batch_cost, reader_cost)
         args.logger.info(infor)
-        # infor = "[EVAL] mIoU: {:.4f} Acc: {:.4f} Kappa: {:.4f} mdice: {:.4f} Macro_F1: {:.4f}".format(
-        #      miou, acc, kappa, mdice, macro_f1)
-        # args.logger.info(infor)
-        args.logger.info("[METRICS] Acc:{:.4}, mIoU:{:.4},Macro_f1:{:.4}".format(acc,miou,mf1))
+        args.logger.info("[METRICS] PA:{:.4},mIoU:{:.4},kappa:{:.4},Macro_f1:{:.4}".format(pa,miou,kappa,mf1))
+        
     
-    d = pd.DataFrame([scores])
+    d = pd.DataFrame([metrics])
     if os.path.exists(args.metric_path):
         d.to_csv(args.metric_path,mode='a', index=False, header=False,float_format="%.4f")
     else:

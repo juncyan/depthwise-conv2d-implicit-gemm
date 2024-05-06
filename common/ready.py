@@ -4,6 +4,8 @@ import argparse
 from .csver import writer_csv
 from .logger import load_logger
 
+from visualdl import LogWriter
+
 __all__ = ['Args', 'setup_train']
 
 class Args():
@@ -15,6 +17,7 @@ class Args():
         self.num_classes = 0
         self.batch_size = 0
         self.iters = 0
+        self.device = "gpu:0"
 
         self.pred_idx = 0
         self.data_name = ""
@@ -25,11 +28,9 @@ class Args():
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
             
-        if not os.path.exists(self.save_dir):
-            os.makedirs(self.save_dir)
-        self.save_predict = os.path.join(self.save_dir , "predict")
-        if not os.path.exists(self.save_predict):
-            os.makedirs(self.save_predict)
+        # self.save_predict = os.path.join(self.save_dir , "predict")
+        # if not os.path.exists(self.save_predict):
+        #     os.makedirs(self.save_predict)
 
         self.best_model_path = os.path.join(self.save_dir, "{}_best.pdparams".format(model_name))
         log_path = os.path.join(self.save_dir, "train_{}.log".format(model_name))
@@ -38,6 +39,9 @@ class Args():
         self.epoch = 0
         self.loss = 0
         self.logger = load_logger(log_path)
+        # self.logger = LogWriter(logdir=self.save_dir)
+        # self.logger.add_text("starts","log save at {}, metric save at {}, weight save at {}".format(log_path, self.metric_path, self.best_model_path))
+        # self.logger.add_scalars()
         self.logger.info("log save at {}, metric save at {}, weight save at {}".format(log_path, self.metric_path, self.best_model_path))
         # writer_csv(self.metric_path, headers=demo_predict_data_headers)
 

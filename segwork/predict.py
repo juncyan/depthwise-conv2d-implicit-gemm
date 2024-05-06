@@ -33,9 +33,8 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
 
     logger = load_logger(f"{img_dir}/prediction.log")
     logger.info(f"test {model_name} on {data_name}")
-    model = model.to('gpu')
+    model = model.to('gpu:0')
     
-
     batch_sampler = paddle.io.BatchSampler(
         dataset, batch_size=8, shuffle=False, drop_last=False)
     
@@ -63,7 +62,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
                 
             else:
                 img1 = data['img1'].cuda()
-                img2 = data['img1'].cuda()
+                img2 = data['img2'].cuda()
                 pred = model(img1, img2)
 
             if hasattr(model, "predict"):
@@ -99,21 +98,21 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
     class_iou = evaluator.Intersection_over_Union()
     class_precision = evaluator.Class_Precision()
     kappa = evaluator.Kappa()
-    recall = evaluator.Mean_Recall()
-    class_dice = evaluator.Dice()
+    m_dice = evaluator.Mean_Dice()
+    f1 = evaluator.F1_score()
     macro_f1 = evaluator.Macro_F1()
     class_recall = evaluator.Recall()
 
     infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(dataset), batch_cost, reader_cost)
     logger.info(infor)
-    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Recall: {:.4f}, Macro_F1: {:.4f}".format(
-            miou, acc, kappa, recall, macro_f1)
+    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, mDice: {:.4f}, Macro_F1: {:.4f}".format(
+            miou, acc, kappa, m_dice, macro_f1)
     logger.info(infor)
 
     logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
     logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
     logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-    logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
+    logger.info("[METRICS] Class F1: " + str(np.round(f1, 4)))
 
     if img_ab_concat:
         images = data['img'].cuda()
@@ -154,7 +153,7 @@ def test(model, dataset, args):
 
     color_label = dataset.label_info.values # np.array([[0,0,0],[255,255,255]])
 
-    model = model.to('gpu')
+    model = model.to(args.device)
 
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
@@ -168,15 +167,9 @@ def test(model, dataset, args):
             name = data['name']
             label = data['label'].astype('int64').cuda()
 
-            if img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
+            images = data['img'].cuda()
+            pred = model(images)
                 
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img1'].cuda()
-                pred = model(img1, img2)
-
             if hasattr(model, "predict"):
                 pred = model.predict(pred)
             else:
@@ -210,21 +203,21 @@ def test(model, dataset, args):
     class_iou = evaluator.Intersection_over_Union()
     class_precision = evaluator.Class_Precision()
     kappa = evaluator.Kappa()
-    recall = evaluator.Mean_Recall()
-    class_dice = evaluator.Dice()
+    m_dice = evaluator.Mean_Dice()
+    f1 = evaluator.F1_score()
     macro_f1 = evaluator.Macro_F1()
     class_recall = evaluator.Recall()
 
     infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(test_data_loader), batch_cost, reader_cost)
     args.logger.info(infor)
-    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Recall: {:.4f}, Macro_F1: {:.4f}".format(
-            miou, acc, kappa, recall, macro_f1)
+    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, mDice: {:.4f}, Macro_F1: {:.4f}".format(
+            miou, acc, kappa, m_dice, macro_f1)
     args.logger.info(infor)
 
     args.logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
     args.logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
     args.logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-    args.logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
+    args.logger.info("[METRICS] Class F1: " + str(np.round(f1, 4)))
 
     if img_ab_concat:
         images = data['img'].cuda()

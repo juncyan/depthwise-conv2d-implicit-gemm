@@ -25,16 +25,9 @@ def evaluate(model, eval_dataset, args=None):
 
             label = data['label'].astype('int64').cuda()
             
-            if args.img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
+            images = data['img'].cuda()
+            pred = model(images)
                 
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img1'].cuda()
-                pred = model(img1, img2)
-
-            
             if hasattr(model, "predict"):
                 pred = model.predict(pred)
             else:

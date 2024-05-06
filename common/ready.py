@@ -27,9 +27,9 @@ class Args():
             
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
-        # self.save_predict = os.path.join(self.save_dir , "predict")
-        # if not os.path.exists(self.save_predict):
-        #     os.makedirs(self.save_predict)
+        self.save_predict = os.path.join(self.save_dir , "predict")
+        if not os.path.exists(self.save_predict):
+            os.makedirs(self.save_predict)
 
         self.best_model_path = os.path.join(self.save_dir, "{}_best.pdparams".format(model_name))
         log_path = os.path.join(self.save_dir, "train_{}.log".format(model_name))

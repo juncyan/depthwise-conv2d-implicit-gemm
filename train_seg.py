@@ -22,10 +22,10 @@ dataset_path = '/home/jq/data/{}'.format(dataset_name)
 num_classes = 5
 
 # res = ResNet50_vd()
-# model = UNet(num_classes, in_channels=6)
+model = UNet(num_classes, in_channels=3)
 # model = UNetPlusPlus(num_classes, 6)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
-model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=3))
+# model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=3))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
 
 model_name = model.__str__().split("(")[0]

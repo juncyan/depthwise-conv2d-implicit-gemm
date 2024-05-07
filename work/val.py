@@ -89,15 +89,13 @@ def evaluate(model, eval_dataset, args=None):
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[args.pred_idx]
 
-            if pred.shape[1] > 1:
-                pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze()
+            # if pred.shape[1] > 1:
+            #     pred = paddle.argmax(pred, axis=1)
+            # pred = pred.squeeze()
 
-            if label.shape[1] > 1:
-                label = paddle.argmax(label, 1)
-            label = label.squeeze()
-
-            evaluator.add_batch(pred, label)
+            # if label.shape[1] > 1:
+            #     label = paddle.argmax(label, 1)
+            # label = label.squeeze()
 
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
@@ -107,6 +105,8 @@ def evaluate(model, eval_dataset, args=None):
             reader_cost_averager.reset()
             batch_cost_averager.reset()
             batch_start = time.time()
+
+            evaluator.add_batch(pred.cpu(), label)
 
     metrics = evaluator.Get_Metric()
     pa = metrics["pa"]

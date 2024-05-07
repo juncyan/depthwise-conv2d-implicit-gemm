@@ -5,7 +5,8 @@ import paddle
 import logging
 
 from datasets.segloader import DataReader, TestReader
-from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab
+from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab,PPLiteSeg
+from paddleseg.models.mobileseg import MobileSeg
 from segwork.train import train
 from common import Args
 
@@ -21,11 +22,12 @@ dataset_path = '/home/jq/data/{}'.format(dataset_name)
 num_classes = 4
 
 # res = ResNet50_vd()
-model = UNet(num_classes, in_channels=3)
-# model = UNetPlusPlus(num_classes, 6)
-# model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
+# model = UNet(num_classes, in_channels=3)
+# model = UNetPlusPlus(num_classes, 3)
+# model = UPerNet(num_classes, ResNet50_vd(in_channels=3),(0,1,2,3))
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=3))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
+model = MobileSeg(num_classes,ResNet50_vd(in_channels=3))
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

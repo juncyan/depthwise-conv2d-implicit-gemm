@@ -54,7 +54,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
             reader_cost_averager.record(time.time() - batch_start)
 
             name = data['name']
-            label = data['label'].astype('int64').cuda()
+            label = data['label'].astype('int64')
 
             if img_ab_concat:
                 images = data['img'].cuda()
@@ -71,8 +71,6 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[0]
 
-            evaluator.add_batch(pred, label)
-
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
             batch_cost = batch_cost_averager.get_average()
@@ -84,10 +82,12 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
 
 
             pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze()
+            pred = pred.squeeze().cpu()
+
+            evaluator.add_batch(pred, label)
 
             for idx, ipred in enumerate(pred):
-                ipred = ipred.cpu().numpy()
+                ipred = ipred.numpy()
                 if (np.max(ipred) != np.min(ipred)):
                     img = color_label[ipred]
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)
@@ -153,8 +153,6 @@ def test(model, dataset, args):
 
     color_label = dataset.label_info.values # np.array([[0,0,0],[255,255,255]])
 
-    model = model.to(args.device)
-
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
@@ -165,7 +163,7 @@ def test(model, dataset, args):
             reader_cost_averager.record(time.time() - batch_start)
 
             name = data['name']
-            label = data['label'].astype('int64').cuda()
+            label = data['label'].astype('int64')
 
             images = data['img'].cuda()
             pred = model(images)
@@ -176,8 +174,6 @@ def test(model, dataset, args):
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[args.pred_idx]
 
-            evaluator.add_batch(pred, label)
-
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
             batch_cost = batch_cost_averager.get_average()
@@ -187,12 +183,12 @@ def test(model, dataset, args):
             batch_cost_averager.reset()
             batch_start = time.time()
 
-
             pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze()
+            pred = pred.squeeze().cpu()
+            evaluator.add_batch(pred, label)
 
             for idx, ipred in enumerate(pred):
-                ipred = ipred.cpu().numpy()
+                ipred = ipred.numpy()
                 if (np.max(ipred) != np.min(ipred)):
                     img = color_label[ipred]
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)

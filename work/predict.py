@@ -82,7 +82,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
             reader_cost_averager.record(time.time() - batch_start)
 
             name = data['name']
-            label = data['label'].astype('int64').cuda()
+            label = data['label'].astype('int64')
 
             if img_ab_concat:
                 images = data['img'].cuda()
@@ -110,16 +110,17 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
 
 
             pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze()
+            pred = pred.squeeze().cpu()
 
             if label.shape[1] > 1:
                 label = paddle.argmax(label, 1)
             label = label.squeeze()
-            label = np.array(label.cpu())
+            label = np.array(label)
+            
+            evaluator.add_batch(pred, label)
 
-            evaluator.add_batch(pred.cpu().numpy(), label)
             for idx, ipred in enumerate(pred):
-                ipred = ipred.cpu().numpy()
+                ipred = ipred.numpy()
                 if (np.max(ipred) != np.min(ipred)):
                     flag_local = (label[idx] - ipred)
                     ipred[flag_local == -1] = 2
@@ -187,7 +188,6 @@ def test(model, dataset, args):
         weights_path (string, optional): weights saved local.
     """
 
-
     if args.best_model_path:
         layer_state_dict = paddle.load(f"{args.best_model_path}")
         model.set_state_dict(layer_state_dict)
@@ -197,7 +197,6 @@ def test(model, dataset, args):
     img_ab_concat = args.img_ab_concat
 
     time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
-   
 
     img_dir = f"/mnt/data/Results/{args.data_name}/{args.model_name}_{time_flag}"
     if not os.path.isdir(img_dir):
@@ -207,7 +206,6 @@ def test(model, dataset, args):
 
     logger = load_logger(f"{img_dir}/prediction.log")
     logger.info(f"test {args.model_name} on {args.data_name}")
-    model = model.to(args.device)
 
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
@@ -220,7 +218,7 @@ def test(model, dataset, args):
             reader_cost_averager.record(time.time() - batch_start)
 
             name = data['name']
-            label = data['label'].astype('int64').cuda()
+            label = data['label'].astype('int64')
 
             if img_ab_concat:
                 images = data['img'].cuda()
@@ -248,16 +246,16 @@ def test(model, dataset, args):
 
 
             pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze()
+            pred = pred.squeeze().cpu()
 
             if label.shape[1] > 1:
                 label = paddle.argmax(label, 1)
             label = label.squeeze()
-            label = np.array(label.cpu())
+            label = np.array(label)
 
-            evaluator.add_batch(pred.cpu().numpy(), label)
+            evaluator.add_batch(pred, label)
             for idx, ipred in enumerate(pred):
-                ipred = ipred.cpu().numpy()
+                ipred = ipred.numpy()
                 if (np.max(ipred) != np.min(ipred)):
                     flag = (label[idx] - ipred)
                     ipred[flag == -1] = 2
@@ -365,7 +363,7 @@ def test_last(model, dataset, args, last_model_path=None):
             reader_cost_averager.record(time.time() - batch_start)
 
             name = data['name']
-            label = data['label'].astype('int64').cuda()
+            label = data['label'].astype('int64')
 
             if img_ab_concat:
                 images = data['img'].cuda()
@@ -382,8 +380,6 @@ def test_last(model, dataset, args, last_model_path=None):
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[args.pred_idx]
 
-            evaluator.add_batch(pred, label)
-
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
             batch_cost = batch_cost_averager.get_average()
@@ -395,15 +391,17 @@ def test_last(model, dataset, args, last_model_path=None):
 
 
             pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze()
+            pred = pred.squeeze().cpu()
 
             if label.shape[1] > 1:
                 label = paddle.argmax(label, 1)
             label = label.squeeze()
-            label = np.array(label.cpu())
+            label = np.array(label)
+
+            evaluator.add_batch(pred, label)
 
             for idx, ipred in enumerate(pred):
-                ipred = ipred.cpu().numpy()
+                ipred = ipred.numpy()
                 if (np.max(ipred) != np.min(ipred)):
                     flag = (label[idx] - ipred)
                     ipred[flag == -1] = 2

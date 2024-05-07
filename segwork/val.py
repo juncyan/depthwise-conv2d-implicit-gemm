@@ -25,7 +25,7 @@ def evaluate(model, eval_dataset, args=None):
         for _, data in enumerate(eval_dataset):
             reader_cost_averager.record(time.time() - batch_start)
 
-            label = data['label'].astype('int64').cuda()
+            label = data['label'].astype('int64')
             images = data['img'].cuda()
             pred = model(images)
                 
@@ -35,7 +35,7 @@ def evaluate(model, eval_dataset, args=None):
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[args.pred_idx]
 
-            evaluator.add_batch(pred, label)
+            evaluator.add_batch(pred.cpu(), label)
 
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))

@@ -26,8 +26,8 @@ num_classes = 4
 # model = UNetPlusPlus(num_classes, 3)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=3),(0,1,2,3))
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=3))
-# model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
-model = MobileSeg(num_classes,ResNet50_vd(in_channels=3))
+model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
+# model = MobileSeg(num_classes,ResNet50_vd(in_channels=3))
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

@@ -4,12 +4,12 @@ import numpy as np
 import paddle
 import logging
 
-from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab
 from cd_models.fccdn import FCCDN
 from cd_models.stanet import STANet
 from cd_models.p2v import P2V
-from paddleseg.models.losses import BCELoss
-from paddleseg.transforms import Resize
+from cd_models.msfgnet import MSFGNet
+from cd_models.fc_siam_conc import FCSiamConc
+from cd_models.snunet import SNUNet
 
 from datasets.cdloader import DataReader, TestReader
 from work.train import train
@@ -18,14 +18,14 @@ from common import Args
 
 # 参数、优化器及损失
 batch_size = 8
-iters = 100 #epochs * 445 // batch_size
+iters = 300 #epochs * 445 // batch_size
 base_lr = 2e-4
 
 # dataset_name = "LEVIR_CD"
 # dataset_name = "GVLM_CD"
 dataset_name = "MacaoCD"
 # dataset_name = "SYSU_CD"
-dataset_path = '/home/jq/data/{}'.format(dataset_name)
+dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
 num_classes = 2
 # res = ResNet50_vd()
@@ -35,9 +35,11 @@ num_classes = 2
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
 # model = DSAMNet(3,2)
-model = P2V(3, 2)
+# model = MSFGNet(3, 2)
+# model = P2V(3,2)
+# model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-# model = STANet(3,2)
+model = SNUNet(3, 2)
 
 
 model_name = model.__str__().split("(")[0]

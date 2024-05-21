@@ -5,19 +5,20 @@ import paddle
 import logging
 
 from datasets.segloader import DataReader, TestReader
-from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd, Xception65_deeplab,PPLiteSeg
+# from rlklab.xception import Xception65_deeplab
+from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd,Xception65_deeplab
 from paddleseg.models.mobileseg import MobileSeg
 from segwork.train import train
 from common import Args
 
 
 # 参数、优化器及损失
-batch_size = 8
+batch_size = 4
 iters = 200
 base_lr = 2e-4
 
 dataset_name = "MacaoLC"
-dataset_path = '/home/jq/data/{}'.format(dataset_name)
+dataset_path = '/mnt/data/Datasets//{}'.format(dataset_name)
 
 num_classes = 4
 
@@ -25,8 +26,8 @@ num_classes = 4
 # model = UNet(num_classes, in_channels=3)
 # model = UNetPlusPlus(num_classes, 3)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=3),(0,1,2,3))
-# model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=3))
-model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
+model = DeepLabV3P(num_classes, backbone=Xception65_deeplab(in_channels=3), backbone_indices=(0,1))
+# model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
 # model = MobileSeg(num_classes,ResNet50_vd(in_channels=3))
 
 model_name = model.__str__().split("(")[0]

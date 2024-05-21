@@ -12,7 +12,7 @@ from common.logger import load_logger
 from work.count_params import flops
 
 
-def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, save_dir="./"):
+def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, save_dir=r"/mnt/data/Results/"):
 
     if weight_path:
         layer_state_dict = paddle.load(f"{weight_path}")
@@ -29,11 +29,11 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
 
-    color_label = dataset.label_info #np.array([[0,0,0],[255,255,255]])
+    color_label = dataset.label_info.values
+    color_label = np.transpose(color_label)
 
     logger = load_logger(f"{img_dir}/prediction.log")
     logger.info(f"test {model_name} on {data_name}")
-    model = model.to('gpu:0')
     
     batch_sampler = paddle.io.BatchSampler(
         dataset, batch_size=8, shuffle=False, drop_last=False)
@@ -56,15 +56,9 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
             name = data['name']
             label = data['label'].astype('int64')
 
-            if img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
-                
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img2'].cuda()
-                pred = model(img1, img2)
-
+            images = data['img'].cuda()
+            pred = model(images)
+            
             if hasattr(model, "predict"):
                 pred = model.predict(pred)
             else:
@@ -88,6 +82,8 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
 
             for idx, ipred in enumerate(pred):
                 ipred = ipred.numpy()
+                # print(np.array([[0,0,0],[255,255,255]]).shape)
+                # print(color_label.shape)
                 if (np.max(ipred) != np.min(ipred)):
                     img = color_label[ipred]
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)
@@ -147,11 +143,13 @@ def test(model, dataset, args):
         num_workers=0,
         return_list=True)
 
-    img_ab_concat = args.img_ab_concat
-
-    img_dir = args.save_predict
+    time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
+    img_dir = f"/mnt/data/Results/{args.data_name}/{args.model_name}_{time_flag}"
+    if not os.path.isdir(img_dir):
+        os.makedirs(img_dir)
 
     color_label = dataset.label_info.values # np.array([[0,0,0],[255,255,255]])
+    color_label = np.transpose(color_label)
 
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
@@ -214,20 +212,12 @@ def test(model, dataset, args):
     args.logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
     args.logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
     args.logger.info("[METRICS] Class F1: " + str(np.round(f1, 4)))
-
-    if img_ab_concat:
-        images = data['img'].cuda()
-        _, c, h, w = images.shape
-        flop_p = flops(
-        model, [1, c, h, w],
-        custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
     
-    else:
-        img1 = data['img1'].cuda()
-        _, c, h, w = img1.shape
-        flop_p = flops(
-        model, [1, c, h, w], 2,
-        custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
+    img1 = data['img'].cuda()
+    _, c, h, w = img1.shape
+    flop_p = flops(
+    model, [1, c, h, w], 2,
+    custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
     args.logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))       
 
 

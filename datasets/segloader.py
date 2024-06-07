@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
-from PIL import Image
+# from PIL import Image
 import paddle
 from paddle.io import Dataset
 from .utils import one_hot_it
@@ -37,10 +37,14 @@ class DataReader(Dataset):
         A_path = self.sst1_images[index]
         lab_path = self.gt_images[index]
 
-        A_img = self._normalize(np.array(Image.open(A_path)))
+        A_img = cv2.imread(A_path)
+        A_img = cv2.cvtColor(A_img, cv2.COLOR_BGR2RGB)
+        A_img = self._normalize(A_img)#np.array(Image.open(A_path)))
         A_img = paddle.to_tensor(A_img.transpose(2, 0, 1)).astype('float32')
     
-        label = np.array(Image.open(lab_path)) 
+        label = cv2.imread(lab_path)
+        label = cv2.cvtColor(label, cv2.COLOR_BGR2RGB)
+        # label = np.array(Image.open(lab_path)) 
 
         label = one_hot_it(label, self.label_info)
         
@@ -85,11 +89,18 @@ class TestReader(DataReader):
         
         lab_path = self.gt_images[index]
 
-        A_img = self._normalize(np.array(Image.open(A_path)))
-        # w, h, _ = A_img.shape
+        A_img = cv2.imread(A_path)
+        A_img = cv2.cvtColor(A_img, cv2.COLOR_BGR2RGB)
+        A_img = self._normalize(A_img)#np.array(Image.open(A_path)))
         A_img = paddle.to_tensor(A_img.transpose(2, 0, 1)).astype('float32')
+    
+        label = cv2.imread(lab_path)
+        label = cv2.cvtColor(label, cv2.COLOR_BGR2RGB)
+        # A_img = self._normalize(np.array(Image.open(A_path)))
+        # # w, h, _ = A_img.shape
+        # A_img = paddle.to_tensor(A_img.transpose(2, 0, 1)).astype('float32')
       
-        label = np.array(Image.open(lab_path)) 
+        # label = np.array(Image.open(lab_path)) 
        
         label = one_hot_it(label, self.label_info)
 

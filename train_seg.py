@@ -2,18 +2,20 @@ import random
 import os
 import numpy as np
 import paddle
-import logging
 
 from datasets.segloader import DataReader, TestReader
 # from rlklab.xception import Xception65_deeplab
 from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd,Xception65_deeplab
-from paddleseg.models.mobileseg import MobileSeg
+from paddleseg.models import PSPNet
+
+from models.backbone.xception import XceptionL65
+from models.deeplab import LKALab
+
 from segwork.train import train
 from common import Args
 
-
 # 参数、优化器及损失
-batch_size = 4
+batch_size = 1
 iters = 200
 base_lr = 2e-4
 
@@ -26,13 +28,15 @@ num_classes = 4
 # model = UNet(num_classes, in_channels=3)
 # model = UNetPlusPlus(num_classes, 3)
 # model = UPerNet(num_classes, ResNet50_vd(in_channels=3),(0,1,2,3))
-model = DeepLabV3P(num_classes, backbone=Xception65_deeplab(in_channels=3), backbone_indices=(0,1))
+# model = DeepLabV3P(num_classes, backbone=Xception65_deeplab(in_channels=3), backbone_indices=(0,1))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
 # model = MobileSeg(num_classes,ResNet50_vd(in_channels=3))
+# model = PSPNet(num_classes, ResNet50_vd(in_channels=3))
+model = LKALab(num_classes, XceptionL65(), (0,1))
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)
-args.device = "gpu:0"
+args.device = "gpu:1"
 args.batch_size = batch_size
 args.num_classes = num_classes
 args.pred_idx = 0
@@ -52,7 +56,7 @@ def seed_init(seed=32767):
 if __name__ == "__main__":
     print("main")
     seed_init(32767)
-    logging.getLogger('PIL').setLevel(logging.WARNING) # 设置PIL模块的日志等级为WARNING
+    # logging.disable(logging.INFO)
 
     train_data = DataReader(dataset_path, 'train', args.en_load_edge, args.img_ab_concat)
     val_data = DataReader(dataset_path, 'val', args.en_load_edge, args.img_ab_concat)
@@ -60,7 +64,7 @@ if __name__ == "__main__":
 
     lr = paddle.optimizer.lr.CosineAnnealingDecay(base_lr, T_max=(iters // 3), last_epoch=0.5)  
     optimizer = paddle.optimizer.Adam(lr, parameters=model.parameters(),) 
-
+   
     train(model,train_data, val_data, test_data, optimizer, args, iters, 2)
 
    

@@ -4,8 +4,6 @@ import argparse
 from .csver import writer_csv
 from .logger import load_logger
 
-from visualdl import LogWriter
-
 __all__ = ['Args', 'setup_train']
 
 class Args():

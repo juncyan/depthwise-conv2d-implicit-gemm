@@ -110,19 +110,12 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
     logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
     logger.info("[METRICS] Class F1: " + str(np.round(f1, 4)))
 
-    if img_ab_concat:
-        images = data['img'].cuda()
-        _, c, h, w = images.shape
-        flop_p = flops(
-        model, [1, c, h, w],
-        custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
-            
-    else:
-        img1 = data['img1'].cuda()
-        _, c, h, w = img1.shape
-        flop_p = flops(
-        model, [1, c, h, w], 2,
-        custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
+    images = data['img'].cuda()
+    _, c, h, w = images.shape
+    flop_p = flops(
+    model, [1, c, h, w],
+    custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
+    
     logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))       
 
 
@@ -216,7 +209,7 @@ def test(model, dataset, args):
     img1 = data['img'].cuda()
     _, c, h, w = img1.shape
     flop_p = flops(
-    model, [1, c, h, w], 2,
+    model, [1, c, h, w], 1,
     custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
     args.logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))       
 

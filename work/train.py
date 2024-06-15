@@ -23,7 +23,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 
-from work.count_params import flops
+# from work.count_params import flops
 from paddleseg.utils import worker_init_fn, op_flops_funs
 from work.val import evaluate
 from work.predict import test, test_last

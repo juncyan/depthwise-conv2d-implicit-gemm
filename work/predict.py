@@ -59,8 +59,6 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
 
     logger = load_logger(f"{img_dir}/prediction.log")
     logger.info(f"test {model_name} on {data_name} save in {img_dir}")
-    model = model.to('gpu')
-    
 
     batch_sampler = paddle.io.BatchSampler(
         dataset, batch_size=8, shuffle=False, drop_last=False)
@@ -126,6 +124,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
                     ipred[flag_local == -1] = 2
                     ipred[flag_local == 1] = 3
                     img = color_label[ipred]
+                    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)
 
             # for idx, ipred in enumerate(pred):
@@ -261,6 +260,7 @@ def test(model, dataset, args):
                     ipred[flag == -1] = 2
                     ipred[flag == 1] = 3
                     img = color_label[ipred]
+                    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)
 
     evaluator.calc()

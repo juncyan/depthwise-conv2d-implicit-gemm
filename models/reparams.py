@@ -4,10 +4,11 @@ import paddle.nn.functional as F
 import numpy as np
         
 class Reparams(nn.Layer):
-    def __init__(self):
+    def __init__(self, **kwagrs):
         super().__init__()
         self.in_channels = 3
         self.lk = 7
+        self.stride = 1
 
         # if kernel_size == 17:
         #     self.kernel_sizes = [5, 9, 3, 3, 3]
@@ -111,7 +112,7 @@ class Reparams(nn.Layer):
     def eval(self):
         kernel, bias = self.get_equivalent_kernel_bias()
         if not hasattr(self, 'repc'):
-            self.repc = nn.Conv2D(self.in_channels, self.in_channels, self.lk, padding=self.lk//2, groups=self.in_channels, bias_attr=bias is not None)
+            self.repc = nn.Conv2D(self.in_channels, self.in_channels, self.lk, stride=self.stride, padding=self.lk//2, groups=self.in_channels, bias_attr=bias is not None)
         self.training = False
         self.repc.weight.set_value(kernel)
         

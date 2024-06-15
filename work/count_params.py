@@ -122,7 +122,7 @@ def flops(net, input_sizes, num_inputs=1, custom_ops=None, print_detail=False):
     if isinstance(net, nn.Layer):
         # If net is a dy2stat model, net.forward is StaticFunction instance,
         # we set net.forward to original forward function.
-        _, net.forward = unwrap_decorators(net.forward)
+        # _, net.forward = unwrap_decorators(net.forward)
 
         img = paddle.rand(input_sizes)
         inputs = num_inputs * [img]

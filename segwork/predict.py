@@ -20,8 +20,6 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
     else:
         exit()
 
-    img_ab_concat = dataset.en_concat
-
     time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
     model_name = model.__str__().split("(")[0]
 
@@ -31,6 +29,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
 
     color_label = dataset.label_info.values
     color_label = np.transpose(color_label)
+    error_lab = np.array([255,255,255])
 
     logger = load_logger(f"{img_dir}/prediction.log")
     logger.info(f"test {model_name} on {data_name}")
@@ -78,6 +77,8 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
             pred = paddle.argmax(pred, axis=1)
             pred = pred.squeeze().cpu()
 
+            if len(label.shape) == 4 and label.shape[1] != 1:
+                label = np.argmax(label, axis=1)
             evaluator.add_batch(pred, label)
 
             for idx, ipred in enumerate(pred):
@@ -86,6 +87,12 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2, s
                 # print(color_label.shape)
                 if (np.max(ipred) != np.min(ipred)):
                     img = color_label[ipred]
+                    err_loc = ipred != label[idx]
+                    img[err_loc] = error_lab
+                    r = img[:,:,2]
+                    img[:,:,2] = img[:,:,0]
+                    img[:,:,0] = r
+                    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)
 
     evaluator.calc()
@@ -142,6 +149,7 @@ def test(model, dataset, args):
         os.makedirs(img_dir)
 
     color_label = dataset.label_info.values # np.array([[0,0,0],[255,255,255]])
+    error_lab = np.array([255,255,255])
     color_label = np.transpose(color_label)
 
     reader_cost_averager = TimeAverager()
@@ -176,12 +184,24 @@ def test(model, dataset, args):
 
             pred = paddle.argmax(pred, axis=1)
             pred = pred.squeeze().cpu()
+
+            if len(label.shape) == 4 and label.shape[1] != 1:
+                label = np.argmax(label, axis=1)
             evaluator.add_batch(pred, label)
 
             for idx, ipred in enumerate(pred):
                 ipred = ipred.numpy()
                 if (np.max(ipred) != np.min(ipred)):
+                    # print("color_lab.shape:", color_label.shape)
                     img = color_label[ipred]
+                    # print("img1.shape:",img.shape)
+                    err_loc = ipred != label[idx]
+                    img[err_loc] = error_lab
+                    # print("img2.shape:",img.shape)
+                    r = img[:,:,2]
+                    img[:,:,2] = img[:,:,0]
+                    img[:,:,0] = r
+                    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     cv2.imwrite(f"{img_dir}/{name[idx]}", img)
 
     evaluator.calc()

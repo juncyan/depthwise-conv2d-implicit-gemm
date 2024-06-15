@@ -76,6 +76,10 @@ class TestReader(DataReader):
         
         self.data_name = os.path.split(dataset_path)[-1]
 
+        self.data_list = self._get_list(self.data_dir)
+        self.data_num = len(self.data_list)
+        self.label_info = pd.read_csv(os.path.join(dataset_path, 'label_info.csv'))
+
         self.file_name = []
         
         for _file in self.data_list:
@@ -88,12 +92,13 @@ class TestReader(DataReader):
         A_path = self.sst1_images[index]
         
         lab_path = self.gt_images[index]
-
+        
         A_img = cv2.imread(A_path)
+        # print(A_img)
+        # assert A_img, "image load error, image is None"
         A_img = cv2.cvtColor(A_img, cv2.COLOR_BGR2RGB)
         A_img = self._normalize(A_img)#np.array(Image.open(A_path)))
         A_img = paddle.to_tensor(A_img.transpose(2, 0, 1)).astype('float32')
-    
         label = cv2.imread(lab_path)
         label = cv2.cvtColor(label, cv2.COLOR_BGR2RGB)
         # A_img = self._normalize(np.array(Image.open(A_path)))

@@ -6,23 +6,23 @@ import paddle
 from datasets.segloader import DataReader, TestReader
 # from rlklab.xception import Xception65_deeplab
 from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd,Xception65_deeplab
-from paddleseg.models import PSPNet
+from paddleseg.models import PSPNet, MobileSeg, OCRNet, hrnet
 
-from models.backbone.xception import XceptionL65
-from models.deeplab import LKALab
+from rlklab.lklab import LKALab, LKALab_2, LKALab_3
 
 from segwork.train import train
 from common import Args
 
 # 参数、优化器及损失
-batch_size = 1
+batch_size = 4
 iters = 200
 base_lr = 2e-4
 
-dataset_name = "MacaoLC"
+# dataset_name = "MacaoLC"
+dataset_name = "Landcover"
 dataset_path = '/mnt/data/Datasets//{}'.format(dataset_name)
 
-num_classes = 4
+num_classes = 5
 
 # res = ResNet50_vd()
 # model = UNet(num_classes, in_channels=3)
@@ -32,7 +32,8 @@ num_classes = 4
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
 # model = MobileSeg(num_classes,ResNet50_vd(in_channels=3))
 # model = PSPNet(num_classes, ResNet50_vd(in_channels=3))
-model = LKALab(num_classes, XceptionL65(), (0,1))
+model = LKALab_3(num_classes)
+# model = OCRNet(num_classes, ResNet50_vd(in_channels=3),(1,3))
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from pslknet.model import LKPSNet_repc
+from rlklab.reparams import LKPSNet_repc
 import paddle
 from datasets.cdloader import TestReader
 from work.predict import predict
@@ -29,4 +29,4 @@ datatest = TestReader(dataset_path,"test",en_concat=True)
 model = LKPSNet_repc()
 
 weight_path = r"output/levir_cd/LKPSNet_repc_2024_03_23_10/epoch_200_model.pdparams"
-predict(model, datatest, weight_path)
+predict(model, datatest,weight_path, dataset_name)

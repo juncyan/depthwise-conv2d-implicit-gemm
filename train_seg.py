@@ -6,9 +6,8 @@ import paddle
 from datasets.segloader import DataReader, TestReader
 # from rlklab.xception import Xception65_deeplab
 from paddleseg.models import UNet, DeepLabV3P, UNetPlusPlus, UPerNet, SegNeXt, ResNet50_vd,Xception65_deeplab
-from paddleseg.models import PSPNet, MobileSeg, OCRNet, hrnet
+from paddleseg.models import PSPNet, MobileSeg, OCRNet, hrnet, ViT_base_patch16_224
 
-from rlklab.lklab import LKALab, LKALab_2, LKALab_3
 
 from segwork.train import train
 from common import Args
@@ -32,8 +31,7 @@ num_classes = 5
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=3))
 # model = MobileSeg(num_classes,ResNet50_vd(in_channels=3))
 # model = PSPNet(num_classes, ResNet50_vd(in_channels=3))
-model = LKALab_3(num_classes)
-# model = OCRNet(num_classes, ResNet50_vd(in_channels=3),(1,3))
+model = OCRNet(num_classes, ResNet50_vd(in_channels=3),(1,3))
 
 model_name = model.__str__().split("(")[0]
 args = Args('output/{}'.format(dataset_name.lower()), model_name)

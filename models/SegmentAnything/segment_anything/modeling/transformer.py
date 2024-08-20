@@ -19,7 +19,7 @@ from paddle import Tensor, nn
 import paddle.nn.functional as F
 import math
 from typing import Tuple, Type
-from common import MLPBlock
+from .common import MLPBlock
 
 
 class TwoWayTransformer(nn.Layer):

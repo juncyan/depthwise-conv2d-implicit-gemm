@@ -1,14 +1,11 @@
-import pandas as pd
-import numpy as np
-import os
+import paddle
+import paddle.nn as nn
+from paddleseg.models import layers
+from paddleseg.models.losses import lovasz_loss
 
-x = r"/home/jq/Code/paddle/output/s2looking/F3Net_2024_07_08_21/F3Net_metrics.csv"
-df = pd.read_csv(x)
-print(df.keys())
-idx = df['F1_1'].idxmax()
-data = df.loc[idx]
-print(data)
 
-idx = df['iou_1'].idxmax()
-data = df.loc[idx]
-print(data)
+from models.SegmentAnything.segment_anything.build_sam import build_sam_vit_t
+x = paddle.randn([1, 64, 256, 256]).cuda()
+pd_path = r"/home/jq/Code/weights/vit_t.pdparams"
+m = build_sam_vit_t(checkpoint=pd_path).to('gpu')
+m.image_encoder(x)

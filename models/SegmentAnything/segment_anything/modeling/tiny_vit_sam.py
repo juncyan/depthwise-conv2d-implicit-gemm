@@ -151,9 +151,11 @@ class TinyViT(nn.Layer):
 
     def forward(self, x):
         # x: (N, C, H, W)
+        print(x.shape)
         x = self.patch_embed(x)
-
+        print(x.shape)
         x = self.layers[0](x)
+        print(x.shape)
         start_i = 1
 
         for i in range(start_i, len(self.layers)):

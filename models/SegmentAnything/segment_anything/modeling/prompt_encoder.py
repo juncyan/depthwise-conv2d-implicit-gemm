@@ -17,7 +17,7 @@
 import paddle
 import numpy as np
 from typing import Any, Optional, Tuple, Type
-from common import LayerNorm2d
+from .common import LayerNorm2d
 
 
 class PromptEncoder(paddle.nn.Layer):

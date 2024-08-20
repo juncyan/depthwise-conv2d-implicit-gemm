@@ -40,11 +40,11 @@ num_classes = 2
 # model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
 # model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
 # model = DSAMNet(3,2)
-model = MSFGNet(3, 2)
+# model = MSFGNet(3, 2)
 # model = P2V(3,2)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-# model = SNUNet(3, 2)
+model = SNUNet(3, 2)
 # model = F3Net()
 
 

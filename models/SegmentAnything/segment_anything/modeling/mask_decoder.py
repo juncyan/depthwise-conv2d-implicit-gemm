@@ -16,7 +16,7 @@
 
 import paddle
 from typing import List, Tuple, Type
-from common import LayerNorm2d
+from .common import LayerNorm2d
 
 
 class MaskDecoder(paddle.nn.Layer):

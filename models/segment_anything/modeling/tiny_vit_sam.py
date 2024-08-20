@@ -151,11 +151,8 @@ class TinyViT(nn.Layer):
 
     def forward(self, x):
         # x: (N, C, H, W)
-        print(x.shape)
         x = self.patch_embed(x)
-        print(x.shape)
         x = self.layers[0](x)
-        print(x.shape)
         start_i = 1
 
         for i in range(start_i, len(self.layers)):
@@ -166,6 +163,22 @@ class TinyViT(nn.Layer):
         x = x.transpose((0, 3, 1, 2))
         x = self.neck(x)
         return x
+    
+    def extract_features(self, x):
+        # x: (N, C, H, W)
+        x = self.patch_embed(x)
+        x = self.layers[0](x)
+        start_i = 1
+        y = [x]
+        for i in range(start_i, len(self.layers)):
+            layer = self.layers[i]
+            x = layer(x)
+            y.append(x)
+        # B, _, C = x.shape
+        # x = x.reshape((B, 64, 64, C))
+        # x = x.transpose((0, 3, 1, 2))
+        # x = self.neck(x)
+        return y
 
 
 class Conv2d_BN(nn.Sequential):

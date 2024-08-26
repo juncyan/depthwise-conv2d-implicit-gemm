@@ -17,7 +17,7 @@ from datasets.cdloader import DataReader, TestReader
 from work.train import train
 from common import Args
 
-from models.samcd import SamCD
+from models.samcd import MobileSamCD
 
 
 # 参数、优化器及损失
@@ -28,10 +28,10 @@ base_lr = 1e-4
 # dataset_name = "LEVIR_CD"
 # dataset_name = "GVLM_CD"
 # dataset_name = "MacaoCD"
-# dataset_name = "SYSU_CD"
+dataset_name = "SYSU_CD"
 # dataset_name = "WHU_BCD"
 # dataset_name = "S2Looking"
-dataset_name = "CLCD"
+# dataset_name = "CLCD"
 
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
@@ -47,7 +47,7 @@ num_classes = 2
 # model = P2V(3,2)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-model = SamCD(img_size=512)
+model = MobileSamCD(img_size=256)
 
 
 model_name = model.__str__().split("(")[0]

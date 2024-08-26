@@ -16,6 +16,8 @@
 
 import paddle
 from typing import List, Tuple, Type
+
+import paddle.tensor
 from .common import LayerNorm2d
 
 
@@ -74,11 +76,11 @@ class MaskDecoder(paddle.nn.Layer):
                                        self.num_mask_tokens, iou_head_depth)
 
     def forward(self,
-                image_embeddings: paddle.Tensor,
-                image_pe: paddle.Tensor,
-                sparse_prompt_embeddings: paddle.Tensor,
-                dense_prompt_embeddings: paddle.Tensor,
-                multimask_output: bool) -> Tuple[paddle.Tensor, paddle.Tensor]:
+                image_embeddings: paddle.tensor,
+                image_pe: paddle.tensor,
+                sparse_prompt_embeddings: paddle.tensor,
+                dense_prompt_embeddings: paddle.tensor,
+                multimask_output: bool):
         """
         Predict masks given image and prompt embeddings.
 
@@ -110,11 +112,10 @@ class MaskDecoder(paddle.nn.Layer):
         return masks, iou_pred
 
     def predict_masks(self,
-                      image_embeddings: paddle.Tensor,
-                      image_pe: paddle.Tensor,
-                      sparse_prompt_embeddings: paddle.Tensor,
-                      dense_prompt_embeddings: paddle.Tensor) -> Tuple[
-                          paddle.Tensor, paddle.Tensor]:
+                      image_embeddings: paddle.tensor,
+                      image_pe: paddle.tensor,
+                      sparse_prompt_embeddings: paddle.tensor,
+                      dense_prompt_embeddings: paddle.tensor):
         """Predicts masks. See 'forward' for more details."""
         output_tokens = paddle.concat(
             x=[self.iou_token.weight, self.mask_tokens.weight], axis=0)
@@ -138,7 +139,7 @@ class MaskDecoder(paddle.nn.Layer):
         """Class Method: *.view, not convert, please check whether it is torch.Tensor.*/Optimizer.*/nn.Module.*, and convert manually"""
         src = x.transpose(perm=perm_0).reshape([b, c, h, w])
         upscaled_embedding = self.output_upscaling(src)
-        hyper_in_list: List[paddle.Tensor] = []
+        hyper_in_list = []
         for i in range(self.num_mask_tokens):
             hyper_in_list.append(self.output_hypernetworks_mlps[i](
                 mask_tokens_out[:, (i), :]))

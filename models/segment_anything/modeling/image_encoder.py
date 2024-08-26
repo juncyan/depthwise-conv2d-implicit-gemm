@@ -16,6 +16,8 @@
 
 import sys
 import os
+
+import paddle.tensor
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "."))
 
 from functools import partial
@@ -116,7 +118,7 @@ class ImageEncoderViT(nn.Layer):
                 bias_attr=False, ),
             LayerNorm2d(out_chans), )
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: paddle.tensor) -> paddle.tensor:
         x = self.patch_embed(x)
         if self.pos_embed is not None:
             x = x + self.pos_embed
@@ -176,7 +178,7 @@ class Block(nn.Layer):
 
         self.window_size = window_size
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: paddle.tensor) -> paddle.tensor:
         shortcut = x
         x = self.norm1(x)
         # Window partition
@@ -242,7 +244,7 @@ class Attention(nn.Layer):
             # self.rel_pos_h = nn.Parameter(paddle.zeros(2 * input_size[0] - 1, head_dim))
             # self.rel_pos_w = nn.Parameter(paddle.zeros(2 * input_size[1] - 1, head_dim))
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: paddle.tensor) -> paddle.tensor:
         B, H, W, _ = x.shape
         # qkv with shape (3, B, nHead, H * W, C)
         qkv = self.qkv(x).reshape(
@@ -266,8 +268,7 @@ class Attention(nn.Layer):
         return x
 
 
-def window_partition(x: paddle.Tensor,
-                     window_size: int) -> Tuple[paddle.Tensor, Tuple[int, int]]:
+def window_partition(x: paddle.tensor, window_size: int):
     """
     Partition into non-overlapping windows with padding if needed.
     Args:
@@ -294,10 +295,10 @@ def window_partition(x: paddle.Tensor,
     return windows, (Hp, Wp)
 
 
-def window_unpartition(windows: paddle.Tensor,
+def window_unpartition(windows: paddle.tensor,
                        window_size: int,
                        pad_hw: Tuple[int, int],
-                       hw: Tuple[int, int]) -> paddle.Tensor:
+                       hw: Tuple[int, int]) -> paddle.tensor:
     """
     Window unpartition into original sequences and removing padding.
     Args:
@@ -323,7 +324,7 @@ def window_unpartition(windows: paddle.Tensor,
 
 
 def get_rel_pos(q_size: int, k_size: int,
-                rel_pos: paddle.Tensor) -> paddle.Tensor:
+                rel_pos: paddle.tensor) -> paddle.tensor:
     """
     Get relative positional embeddings according to the relative positions of
         query and key sizes.
@@ -358,12 +359,12 @@ def get_rel_pos(q_size: int, k_size: int,
 
 
 def add_decomposed_rel_pos(
-        attn: paddle.Tensor,
-        q: paddle.Tensor,
-        rel_pos_h: paddle.Tensor,
-        rel_pos_w: paddle.Tensor,
+        attn: paddle.tensor,
+        q: paddle.tensor,
+        rel_pos_h: paddle.tensor,
+        rel_pos_w: paddle.tensor,
         q_size: Tuple[int, int],
-        k_size: Tuple[int, int], ) -> paddle.Tensor:
+        k_size: Tuple[int, int], ) -> paddle.tensor:
     """
     Calculate decomposed Relative Positional Embeddings from :paper:`mvitv2`.
     https://github.com/facebookresearch/mvit/blob/19786631e330df9f3622e5402b4a419a263a2c80/mvit/models/attention.py   # noqa B950
@@ -423,7 +424,7 @@ class PatchEmbed(nn.Layer):
             stride=stride,
             padding=padding)
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: paddle.tensor) -> paddle.tensor:
         x = self.proj(x)
         # B C H W -> B H W C
         x = paddle.transpose(x, [0, 2, 3, 1])

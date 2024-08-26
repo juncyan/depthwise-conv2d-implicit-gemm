@@ -4,10 +4,13 @@ import paddle.nn.functional as F
 
 import math
 
+import paddle.tensor
 from paddleseg.models import layers
 from paddleseg.models.losses import LovaszSoftmaxLoss, BCELoss
+from paddleseg.utils import load_entire_model
 
-from models.segment_anything.build_sam import build_sam_vit_t
+from models.mobilesam import MobileSAM
+from models.kan import KANLinear, KAN
 
 
 def features_transfer(x):
@@ -20,16 +23,17 @@ def features_transfer(x):
 class Extracter(nn.Layer):
     def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
         super().__init__()
-        self.sam = build_sam_vit_t(img_size=img_size, checkpoint=sam_checkpoint)
+        self.sam = MobileSAM(img_size=img_size, checkpoint=sam_checkpoint)
 
-        self.cbr1 = layers.ConvBNAct(256,128,3,act_type='gelu')
-        self.cbr2 = layers.ConvBNAct(640,320,3,act_type='gelu')
+        self.bf1 = Bit_Fusion(256,128)
+        self.bf2 = Bit_Fusion(640,320)
 
         # for p in self.sam():
         #     p.requires_grad = False
     
     def extract_features(self, x):
         f1, f2, f3, f4 = self.sam.image_encoder.extract_features(x)
+        return f1,f2,f3, f4
         # print(f1.shape, f4.shape)
         f1 = features_transfer(f1)
         # f2 = features_transfer(f2)
@@ -37,19 +41,79 @@ class Extracter(nn.Layer):
         f4 = features_transfer(f4)
         return f1, f4
     
+    def prompt(self, x:paddle.tensor):
+        sparse_embeddings, dense_embeddings = self.sam.prompt_encoder(None,None,None, )
+        low_res_masks, _ = self.sam.mask_decoder(
+                image_embeddings=x,
+                image_pe=self.sam.prompt_encoder.get_dense_pe(),
+                sparse_prompt_embeddings=sparse_embeddings,
+                dense_prompt_embeddings=dense_embeddings,
+                multimask_output=True, )
+        
+        original_size = [self.sam.image_encoder.img_size, self.sam.image_encoder.img_size]
+        masks = self.sam.postprocess_masks(
+                low_res_masks,
+                input_size=x.shape[-2:],
+                original_size=original_size)
+        return masks
+    
     def forward(self, x):
         x1 = x[:,:3, :,:]
         x2 = x[:,3: ,:,:]
-        b1, b2 = self.extract_features(x1)
-        p1, p2 = self.extract_features(x2)
+        b1,_,_, b2 = self.extract_features(x1)
+        p1,_,_, p2 = self.extract_features(x2)
 
-        f1 = paddle.concat([b1, p1], 1)
-        f1 = self.cbr1(f1)
-        f2 = paddle.concat([b2, p2], 1)
-        f2 = self.cbr2(f2)
+        f1 = self.bf1(b1, p1)
+        f2 = self.bf2(b2, p2)
+
+        f1 = features_transfer(f1)
+        f2 = features_transfer(f2)
 
         return f1, f2
 
+class Bit_Fusion(nn.Layer):
+    def __init__(self, in_channels=32, out_channels=64):
+        super().__init__()
+        self.lmax = nn.AdaptiveMaxPool1D(1)
+        self.lavg = nn.AdaptiveAvgPool1D(1)
+        dims = int(in_channels // 2)
+
+        self.lc1 = nn.Linear(in_channels, dims)
+        self.bn1 = nn.BatchNorm1D(dims, data_format="NLC")
+
+        self.lc2 = nn.Linear(2*dims, dims)
+        self.bn2 = nn.BatchNorm1D(dims, data_format="NLC")
+
+        self.lc3 = nn.Linear(2*dims, dims)#nn.Linear(2*dims, dims)
+        self.bn3 = nn.BatchNorm1D(dims, data_format="NLC")
+
+
+    def forward(self, x1, x2):
+        x = paddle.concat([x1, x2], -1)
+        y = self.lc1(x)
+        y = self.bn1(y)
+        y = F.relu(y)
+
+        lavg = self.lavg(y)
+        lmax = self.lmax(y)
+
+        yavg = lavg * y
+        ymax = lmax * y
+        ya = paddle.concat([yavg, ymax], -1)
+
+        ya = self.lc2(ya)
+        ya = self.bn2(ya)
+        ya = F.relu(ya)
+
+        yb = paddle.concat([y, ya], -1)
+
+        yb = yb + x
+
+        yb = self.lc3(yb)
+        yb = self.bn3(yb)
+        yb = F.relu(yb)
+
+        return yb
 
 class Fusion(nn.Layer):
     """ different based on Position attention module"""
@@ -78,16 +142,41 @@ class Fusion(nn.Layer):
         return y
 
 
-class SamCD(nn.Layer):
+class MobileSamCD(nn.Layer):
     def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
         super().__init__()
-        self.extracter = Extracter(img_size=img_size, sam_checkpoint=sam_checkpoint)
+        self.sam = MobileSAM(img_size=img_size)
+        self.sam.eval()
+        if sam_checkpoint is not None:
+            load_entire_model(self.sam, sam_checkpoint)
+            self.sam.image_encoder.build_abs()
+
+        self.bf1 = Bit_Fusion(256,128)
+        self.bf2 = Bit_Fusion(640,320)
+
         self.fusion = Fusion(64)
         self.cls = layers.ConvBN(64,2,7)
         
+    def feature_extractor(self, x):
+        f1, f2,f3,f4 = self.sam.image_encoder.extract_features(x)
+        return f1, f2, f3, f4
     
-    def forward(self, x):
-        f1, f2 = self.extracter(x)
+    def extractor(self, x1, x2):
+        f1, f2, f3, f4 = self.feature_extractor(x1)
+        p1, p2, p3, p4 = self.feature_extractor(x2)
+
+        f1 = self.bf1(f1, p1)
+        f2 = self.bf2(f4, p4)
+        f1 = features_transfer(f1)
+        f2 = features_transfer(f2)
+        return f1, f2
+    
+    def forward(self, x1, x2=None):
+        if x2 == None:
+            x2 = x1[:,3:,:,:]
+            x1 = x1[:,:3,:,:]
+        f1, f2 = self.extractor(x1, x2)
+        
         y = self.fusion(f1, f2)
         y = self.cls(y)
         return y

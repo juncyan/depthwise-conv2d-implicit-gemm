@@ -127,7 +127,7 @@ def train(model,
                 images = data['img'].cuda()
                 # i_split = (z.chunk(2, axis=2) for z in images.chunk(2, axis=3))
                 # i_merge = paddle.concat(tuple(paddle.concat((x2, x1), 2) for (x1, x2) in i_split), 3)
-                # images = paddle.concat([images, i_merge], 0)
+                # images = paddle.concat([images, i_merge], 0)             
                 # print(images.shape)
                 pred = model(images)
                 

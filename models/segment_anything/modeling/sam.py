@@ -20,6 +20,8 @@ from paddle.nn import functional as F
 
 from typing import Any, Dict, List, Tuple, Union
 
+import paddle.tensor
+
 from .image_encoder import ImageEncoderViT
 from .mask_decoder import MaskDecoder
 from .prompt_encoder import PromptEncoder
@@ -73,7 +75,7 @@ class Sam(nn.Layer):
     def forward(
             self,
             batched_input: List[Dict[str, Any]],
-            multimask_output: bool, ) -> List[Dict[str, paddle.Tensor]]:
+            multimask_output: bool, ):
         """
         Predicts masks end-to-end from provided images and prompts.
         If prompts are not known in advance, using SamPredictor is
@@ -148,9 +150,9 @@ class Sam(nn.Layer):
 
     def postprocess_masks(
             self,
-            masks: paddle.Tensor,
+            masks: paddle.tensor,
             input_size: Tuple[int, ...],
-            original_size: Tuple[int, ...], ) -> paddle.Tensor:
+            original_size: Tuple[int, ...], ) -> paddle.tensor:
         """
         Remove padding and upscale masks to the original image size.
 
@@ -171,12 +173,13 @@ class Sam(nn.Layer):
             (self.image_encoder.img_size, self.image_encoder.img_size),
             mode="bilinear",
             align_corners=False, )
+
         masks = masks[..., :input_size[0], :input_size[1]]
         masks = F.interpolate(
             masks, original_size, mode="bilinear", align_corners=False)
         return masks
 
-    def preprocess(self, x: paddle.Tensor) -> paddle.Tensor:
+    def preprocess(self, x: paddle.tensor) -> paddle.tensor:
         """Normalize pixel values and pad to a square input."""
         # Normalize colors
         x = (x - self.pixel_mean) / self.pixel_std

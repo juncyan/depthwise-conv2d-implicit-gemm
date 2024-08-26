@@ -100,6 +100,8 @@ class TinyViT(nn.Layer):
                 padding=1,
                 bias_attr=False, ),
             LayerNorm2d(256), )
+        
+        # self.build_abs()
 
     def set_layer_lr_decay(self, layer_lr_decay):
         decay_rate = layer_lr_decay

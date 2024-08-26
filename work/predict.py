@@ -139,15 +139,15 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
     class_iou = evaluator.Intersection_over_Union()
     class_precision = evaluator.Class_Precision()
     kappa = evaluator.Kappa()
-    m_dice = evaluator.Mean_Dice()
+    # m_dice = evaluator.Mean_Dice()
     f1 = evaluator.F1_score()
     macro_f1 = evaluator.Macro_F1()
     class_recall = evaluator.Recall()
 
     infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(dataset), batch_cost, reader_cost)
     logger.info(infor)
-    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, mDice: {:.4f}, Macro_F1: {:.4f}".format(
-            miou, acc, kappa, m_dice, macro_f1)
+    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Macro_F1: {:.4f}".format(
+            miou, acc, kappa, macro_f1)
     logger.info(infor)
 
     logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
@@ -269,15 +269,15 @@ def test(model, dataset, args):
     class_iou = evaluator.Intersection_over_Union()
     class_precision = evaluator.Class_Precision()
     kappa = evaluator.Kappa()
-    m_dice = evaluator.Mean_Dice()
+    # m_dice = evaluator.Mean_Dice()
     f1 = evaluator.F1_score()
     macro_f1 = evaluator.Macro_F1()
     class_recall = evaluator.Recall()
 
     infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(dataset), batch_cost, reader_cost)
     args.logger.info(infor)
-    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, mDice: {:.4f}, Macro_F1: {:.4f}".format(
-            miou, acc, kappa, m_dice, macro_f1)
+    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Macro_F1: {:.4f}".format(
+            miou, acc, kappa, macro_f1)
     args.logger.info(infor)
 
     args.logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))

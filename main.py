@@ -21,14 +21,15 @@ from models.samcd import MobileSamCD
 
 
 # 参数、优化器及损失
-batch_size = 4
+batch_size = 2
 iters = 100 #epochs * 445 // batch_size
 base_lr = 1e-4
 
 # dataset_name = "LEVIR_CD"
+dataset_name = "LEVIR_CDP"
 # dataset_name = "GVLM_CD"
 # dataset_name = "MacaoCD"
-dataset_name = "SYSU_CD"
+# dataset_name = "SYSU_CD"
 # dataset_name = "WHU_BCD"
 # dataset_name = "S2Looking"
 # dataset_name = "CLCD"
@@ -47,7 +48,7 @@ num_classes = 2
 # model = P2V(3,2)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-model = MobileSamCD(img_size=256)
+model = MobileSamCD(img_size=1024)
 
 
 model_name = model.__str__().split("(")[0]

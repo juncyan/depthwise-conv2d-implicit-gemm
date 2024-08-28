@@ -16,7 +16,7 @@
 import paddle
 from datasets.cdloader import TestReader
 from work.predict import predict
-from cd_models.snunet import SNUNet
+from models.samcd import MobileSamCD
 
 
 dataset_name = "LEVIR_CD"
@@ -28,7 +28,8 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 num_classes = 2
 datatest = TestReader(dataset_path,"test",en_concat=True)
 
-model = SNUNet(3, 2)
+model = MobileSamCD(img_size=512)
+
 
 weight_path = r"/home/jq/Code/paddle/output/whu_bcd/SNUNet_2024_06_30_00/SNUNet_best.pdparams"
 predict(model, datatest,weight_path, dataset_name)

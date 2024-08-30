@@ -105,16 +105,15 @@ class MobileSamCD(nn.Layer):
     def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
         super().__init__()
         self.sam = MobileSAM(img_size=img_size)
-        self.sam.image_encoder.eval()
-        self.sam.prompt_encoder.eval()
+        self.sam.eval()
         if sam_checkpoint is not None:
             load_entire_model(self.sam, sam_checkpoint)
             self.sam.image_encoder.build_abs()
+        self.sam.mask_decoder.train()
 
         self.conv1 = layers.ConvBNAct(320, 256, 1, act_type='gelu')
-
-        self.upconv1 = layers.ConvBNReLU(6, 64, 1, act_type='gelu')
-        self.conv2 = layers.ConvBNReLU(128, 64, 1, act_type='gelu')
+        self.upconv1 = layers.ConvBNAct(6, 64, 1, act_type='gelu')
+        self.conv2 = layers.ConvBNAct(128, 64, 1, act_type='gelu')
         self.cls = layers.ConvBN(64,2,7)
 
         

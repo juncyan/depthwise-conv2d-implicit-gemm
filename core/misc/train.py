@@ -27,7 +27,7 @@ from .val import evaluate
 from .predict import test
 
 
-def train(model,obj):
+def train(obj):
     """
     Launch training.
 
@@ -37,7 +37,7 @@ def train(model,obj):
         val_dataset (paddle.io.Dataset, optional): Used to read and process validation datasets.
         optimizer (paddle.optimizer.Optimizer): The optimizer.
     """
-    model = model
+    model = obj.model
 
     lr = paddle.optimizer.lr.CosineAnnealingDecay(obj.args.lr, T_max=(obj.args.iters // 3), last_epoch=0.5)  # 余弦衰减
     optimizer = paddle.optimizer.Adam(lr, parameters=model.parameters(),) 
@@ -106,8 +106,7 @@ def train(model,obj):
         if epoch == obj.args.iters:
             paddle.save(model.state_dict(),
                         os.path.join(obj.save_dir, f'last_model.pdparams'))
-
-        mean_iou = evaluate(model,obj)
+        mean_iou = evaluate(obj)
 
         if mean_iou > best_mean_iou:
             # predict(model, test_data_loader, args)
@@ -118,7 +117,7 @@ def train(model,obj):
         if obj.logger !=  None:
             obj.logger.info("[TRAIN] best iter {}, max mIoU {:.4f}".format(best_model_iter, best_mean_iou))
         batch_start = time.time()
-    test(model,obj)
+    test(obj)
     logging.shutdown()
     
     # Sleep for a second to let dataloader release resources.

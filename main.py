@@ -3,6 +3,7 @@ import os
 import numpy as np
 import paddle
 import logging
+import argparse
 
 from cd_models.fccdn import FCCDN
 from cd_models.stanet import STANet
@@ -13,30 +14,23 @@ from cd_models.snunet import SNUNet
 from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 
-from datasets.cdloader import DataReader, TestReader
-from work.train import train
-from common import Args
 
-from models.samcd import MobileSamCD
+from models.samcd import MobileSamCD_CSP
 
+from core.work import Work
 
-# 参数、优化器及损失
-batch_size = 2
-iters = 100 #epochs * 445 // batch_size
-base_lr = 1e-4
 
 # dataset_name = "LEVIR_CD"
-dataset_name = "LEVIR_CDP"
+# dataset_name = "LEVIR_CDP"
 # dataset_name = "GVLM_CD"
 # dataset_name = "MacaoCD"
 # dataset_name = "SYSU_CD"
-# dataset_name = "WHU_BCD"
+dataset_name = "WHU_BCD"
 # dataset_name = "S2Looking"
 # dataset_name = "CLCD"
 
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
-num_classes = 2
 # res = ResNet50_vd()
 # model = UNet(num_classes, in_channels=6)
 # model = UNetPlusPlus(num_classes, 6)
@@ -48,39 +42,42 @@ num_classes = 2
 # model = P2V(3,2)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-model = MobileSamCD(img_size=1024)
+model = MobileSamCD_CSP(img_size=512)
 
-
-model_name = model.__str__().split("(")[0]
-args = Args('output/{}'.format(dataset_name.lower()), model_name)
-args.batch_size = batch_size
-args.device = "gpu:1"
-args.num_classes = num_classes
-args.pred_idx = 0
-args.data_name = dataset_name
-args.img_ab_concat = True
-args.en_load_edge = False
-
-paddle.device.set_device(args.device)
-
-def seed_init(seed=32767):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    paddle.seed(seed)
+def parse_args():
+    parser = argparse.ArgumentParser(description='Semantic Segmentation Overfitting Test')
+    # model
+    parser.add_argument('--model', type=str, default='msfgnet',
+                        help='model name (default: msfgnet)')
+    parser.add_argument('--device', type=str, default='gpu:0',
+                        choices=['gpu:0', 'gpu:1', 'cpu'],
+                        help='device (default: gpu:0)')
+    parser.add_argument('--dataset', type=str, default="CLCD",
+                        help='dataset name (default: LEVIR_CD)')
+    parser.add_argument('--iters', type=int, default=100, metavar='N',
+                        help='number of epochs to train (default: 100)')
+    parser.add_argument('--img_ab_concat', type=bool, default=True,
+                        help='img_ab_concat False')
+    parser.add_argument('--en_load_edge', type=bool, default=False,
+                        help='en_load_edge False')
+    parser.add_argument('--num_classes', type=int, default=2,
+                        help='num classes (default: 2)')
+    parser.add_argument('--batch_size', type=int, default=2,
+                        help='batch_size (default: 4)')
+    parser.add_argument('--lr', type=float, default=1e-4, metavar='LR',
+                        help='learning rate (default: 1e-4)')
+    parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
+                        help='momentum (default: 0.9)')
+    parser.add_argument('--weight-decay', type=float, default=1e-4, metavar='M',
+                        help='w-decay (default: 5e-4)')
+    parser.add_argument('--num_workers', type=int, default=8,
+                        help='num_workers (default: 8)')
+    args = parser.parse_args()
+    return args
     
-
 if __name__ == "__main__":
     print("main")
-    seed_init(32767)
-    # logging.getLogger('PIL').setLevel(logging.WARNING) # 设置PIL模块的日志等级为WARNING
+    args = parse_args()
+    w = Work(model, args,'./output')
+    w()
 
-    train_data = DataReader(dataset_path, 'train', args.en_load_edge, args.img_ab_concat)
-    val_data = DataReader(dataset_path, 'test', args.en_load_edge, args.img_ab_concat)
-    test_data = TestReader(dataset_path, 'test', args.en_load_edge, args.img_ab_concat)
-
-    lr = paddle.optimizer.lr.CosineAnnealingDecay(base_lr, T_max=(iters // 3), last_epoch=0.5)  # 余弦衰减
-    optimizer = paddle.optimizer.Adam(lr, parameters=model.parameters(),) 
-
-    # paddle.Model().fit()
-    train(model,train_data, val_data, test_data, optimizer, args, iters, 2)

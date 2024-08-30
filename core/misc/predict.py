@@ -175,7 +175,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
     logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))       
 
 
-def test(model, obj=None):
+def test(obj=None):
     """
     Launch evalution.
 
@@ -186,7 +186,8 @@ def test(model, obj=None):
     """
     assert obj != None, "obj is None, please check!"
 
-    model = obj.model.eval()
+    model = obj.model
+    model.eval()
     if obj.best_model_path:
         layer_state_dict = paddle.load(f"{obj.best_model_path}")
         model.set_state_dict(layer_state_dict)
@@ -197,7 +198,7 @@ def test(model, obj=None):
 
     time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
 
-    img_dir = f"/mnt/data/Results/{obj.args.data_name}/{obj.model_name}_{time_flag}"
+    img_dir = f"/mnt/data/Results/{obj.args.dataset}/{obj.model_name}_{time_flag}"
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
 

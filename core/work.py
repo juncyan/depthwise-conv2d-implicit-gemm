@@ -23,6 +23,7 @@ class Work():
         self.color_label = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
 
         paddle.device.set_device(self.args.device)
+        self.model = model.to(self.args.device)
 
         self._seed_init()
         self.logger()
@@ -30,8 +31,8 @@ class Work():
 
     def dataload(self, datasetlist=['train', 'val', 'test']):
         train_data = DataReader(self.dataset_path, datasetlist[0], self.args.en_load_edge, self.args.img_ab_concat)
-        val_data = DataReader(self.dataset_path, datasetlist[1], self.args.en_load_edge, self.args.img_ab_concat)
-        test_data = TestReader(self.dataset_path, datasetlist[1], self.args.en_load_edge, self.args.img_ab_concat)
+        val_data = DataReader(self.dataset_path, datasetlist[2], self.args.en_load_edge, self.args.img_ab_concat)
+        test_data = TestReader(self.dataset_path, datasetlist[2], self.args.en_load_edge, self.args.img_ab_concat)
 
         batch_sampler = paddle.io.BatchSampler(train_data, batch_size=self.args.batch_size, shuffle=True, drop_last=True)
 
@@ -52,7 +53,8 @@ class Work():
             val_data,
             batch_sampler=val_batch_sampler,
             num_workers=self.args.num_workers,
-            return_list=True)
+            return_list=True,
+            worker_init_fn=worker_init_fn, )
 
         test_batch_sampler = paddle.io.BatchSampler(
             test_data, batch_size=self.args.batch_size, shuffle=False, drop_last=False)
@@ -61,7 +63,8 @@ class Work():
             test_data,
             batch_sampler=test_batch_sampler,
             num_workers=self.args.num_workers,
-            return_list=True)
+            return_list=True,
+            worker_init_fn=worker_init_fn, )
     
     def loss(logits, labels):
         if logits.shape == labels.shape:
@@ -95,7 +98,7 @@ class Work():
         self.logger = load_logger(log_path)
         self.logger.info("log save at {}, metric save at {}, weight save at {}".format(log_path, self.metric_path, self.best_model_path))
 
-    def __call__(self, model):
-        train(model, self)
+    def __call__(self):
+        train(self)
 
             

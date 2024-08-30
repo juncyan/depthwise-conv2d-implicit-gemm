@@ -26,20 +26,21 @@ from .metrics import Metrics
 np.set_printoptions(suppress=True)
 
 
-def evaluate(model, obj=None):
+def evaluate(obj=None):
     """
     Launch evalution.
     """
     assert obj != None, "obj is None, please check!"
-
+    model = obj.model
+    
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     evaluator = Metrics(num_class=obj.args.num_classes)
-    model = model.eval()
+    model.eval()
 
     with paddle.no_grad():
-        for _, data in enumerate(obj.eval_loader):
+        for data in obj.val_loader:
             reader_cost_averager.record(time.time() - batch_start)
 
             label = data['label'].astype('int64')

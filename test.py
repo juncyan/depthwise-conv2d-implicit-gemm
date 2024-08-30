@@ -14,38 +14,45 @@ from cd_models.snunet import SNUNet
 from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 
-from datasets.cdloader import DataReader, TestReader
-from work.train import train
-from common import Args
 
-from models.samcd import MobileSamCD
+from models.samcd import MobileSamCD_CSP
 
 from core.work import Work
 
-
-# 参数、优化器及损失
 
 # dataset_name = "LEVIR_CD"
 # dataset_name = "LEVIR_CDP"
 # dataset_name = "GVLM_CD"
 # dataset_name = "MacaoCD"
 # dataset_name = "SYSU_CD"
-# dataset_name = "WHU_BCD"
+dataset_name = "WHU_BCD"
 # dataset_name = "S2Looking"
-dataset_name = "CLCD"
+# dataset_name = "CLCD"
 
+dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 
-model = MobileSamCD(img_size=512)
+# res = ResNet50_vd()
+# model = UNet(num_classes, in_channels=6)
+# model = UNetPlusPlus(num_classes, 6)
+# model = UPerNet(num_classes, ResNet50_vd(in_channels=6),(0,1,2,3))
+# model = DeepLabV3P(num_classes, backbone=ResNet50_vd(in_channels=6))
+# model = SegNeXt(num_classes=num_classes, decoder_cfg={}, backbone=ResNet50_vd(in_channels=6))
+# model = DSAMNet(3,2)
+# model = MSFGNet(3, 2)
+# model = P2V(3,2)
+# model = FCCDN(3,2)
+# model = FCSiamConc(3,2)
+model = MobileSamCD_CSP(img_size=256)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Semantic Segmentation Overfitting Test')
     # model
     parser.add_argument('--model', type=str, default='msfgnet',
                         help='model name (default: msfgnet)')
-    parser.add_argument('--device', type=str, default='gpu:0',
+    parser.add_argument('--device', type=str, default='gpu:1',
                         choices=['gpu:0', 'gpu:1', 'cpu'],
                         help='device (default: gpu:0)')
-    parser.add_argument('--dataset', type=str, default='LEVIR_CD',
+    parser.add_argument('--dataset', type=str, default="CLCD",
                         help='dataset name (default: LEVIR_CD)')
     parser.add_argument('--iters', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 100)')
@@ -55,7 +62,7 @@ def parse_args():
                         help='en_load_edge False')
     parser.add_argument('--num_classes', type=int, default=2,
                         help='num classes (default: 2)')
-    parser.add_argument('--batch_size', type=int, default=4,
+    parser.add_argument('--batch_size', type=int, default=2,
                         help='batch_size (default: 4)')
     parser.add_argument('--lr', type=float, default=1e-4, metavar='LR',
                         help='learning rate (default: 1e-4)')
@@ -72,5 +79,5 @@ if __name__ == "__main__":
     print("main")
     args = parse_args()
     w = Work(model, args,'./output')
-    w(model)
+    w()
 

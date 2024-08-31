@@ -15,7 +15,7 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 
 
-from models.samcd import MobileSamCD_CSP
+from models.samcd import MobileSamCD_CSP, MobileSamCD, MobileSamCD_S3
 
 from core.work import Work
 
@@ -42,13 +42,15 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 # model = P2V(3,2)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-model = MobileSamCD_CSP(img_size=256)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Semantic Segmentation Overfitting Test')
     # model
     parser.add_argument('--model', type=str, default='msfgnet',
                         help='model name (default: msfgnet)')
+    parser.add_argument('--img_size', type=int, default=256,
+                        help='input image size (default: 256)')
     parser.add_argument('--device', type=str, default='gpu:1',
                         choices=['gpu:0', 'gpu:1', 'cpu'],
                         help='device (default: gpu:0)')
@@ -78,6 +80,7 @@ def parse_args():
 if __name__ == "__main__":
     print("main")
     args = parse_args()
+    model = MobileSamCD_S3(img_size=args.img_size)
     w = Work(model, args,'./output')
     w()
 

@@ -18,6 +18,8 @@ import paddle
 import paddle.nn as nn
 from typing import Type
 
+import paddle.tensor
+
 
 class MLPBlock(nn.Layer):
     def __init__(self,
@@ -29,7 +31,7 @@ class MLPBlock(nn.Layer):
         self.lin2 = nn.Linear(mlp_dim, embedding_dim)
         self.act = act()
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: paddle.tensor) -> paddle.tensor:
         return self.lin2(self.act(self.lin1(x)))
 
 
@@ -46,7 +48,7 @@ class LayerNorm2d(nn.Layer):
             default_initializer=nn.initializer.Constant(value=0.0))
         self.eps = eps
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: paddle.tensor) -> paddle.tensor:
         u = x.mean(1, keepdim=True)
         s = (x - u).pow(2).mean(1, keepdim=True)
         x = (x - u) / paddle.sqrt(s + self.eps)

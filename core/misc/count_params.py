@@ -199,7 +199,12 @@ def count_parameters(m, x, y):
 
 
 def count_io_info(m, x, y):
-    m.register_buffer('input_shape', paddle.to_tensor(x[0].shape))
+    # print("Input shape: ", x[0])
+    if type(x[0]) is tuple:
+        inshape = x[0]
+    else:
+        inshape = x[0].shape
+    m.register_buffer('input_shape', paddle.to_tensor(inshape))
     if isinstance(y, (list, tuple)):
         m.register_buffer('output_shape', paddle.to_tensor(y[0].shape))
     else:

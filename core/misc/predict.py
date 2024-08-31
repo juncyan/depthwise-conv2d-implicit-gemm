@@ -205,7 +205,7 @@ def test(obj=None):
     color_label = obj.color_label
 
     logger = load_logger(f"{img_dir}/prediction.log")
-    logger.info(f"test {obj.args.model_name} on {obj.data_name}")
+    logger.info(f"test {obj.args.dataset} on {obj.model_name}")
 
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()

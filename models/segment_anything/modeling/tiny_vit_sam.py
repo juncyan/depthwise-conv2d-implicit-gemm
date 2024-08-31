@@ -4,6 +4,7 @@ import paddle
 from paddle import nn
 from paddle.nn import functional as F
 
+import math
 from .common import LayerNorm2d
 
 # NOTE: All the DropPath and parameters initialization are commented out due to sam do not support to train.
@@ -176,11 +177,12 @@ class TinyViT(nn.Layer):
             layer = self.layers[i]
             x = layer(x)
             y.append(x)
-        # B, _, C = x.shape
-        # x = x.reshape((B, 64, 64, C))
-        # x = x.transpose((0, 3, 1, 2))
-        # x = self.neck(x)
-        return y
+        B, wh, C = x.shape
+        w = int(math.sqrt(wh))
+        x = x.reshape((B, w, w, C))
+        x = x.transpose((0, 3, 1, 2))
+        x = self.neck(x)
+        return y, x
 
 
 class Conv2d_BN(nn.Sequential):

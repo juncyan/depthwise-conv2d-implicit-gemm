@@ -4,6 +4,45 @@ import paddle.nn.functional as F
 
 from models.utils import MLPBlock
 
+class DGF(nn.Layer):
+    def __init__(self, dims):
+        super().__init__()
+        self.cov1 = nn.Conv1D(dims, dims,3,padding=1, groups=dims,data_format='NLC')
+        self.fc = nn.Linear(dims,dims)
+        self.bn1 = nn.BatchNorm1D(dims, data_format='NLC')
+
+        self.mlp = MLPBlock(dims, 2*dims)
+
+    def forward(self, x):
+        x1 = self.cov1(x)
+
+        x2 = F.adaptive_avg_pool1d(x, 1)
+        x2 = x * x2
+        x2 = self.fc(x2)
+        x2 = F.softmax(x2, axis=-1)
+
+        y = x1 + x2
+        y = self.bn1(y)
+        y = self.mlp(y)
+        y = y + x
+        return y
+
+class BF3(nn.Layer):
+    # Bitemporal Fusion based on Parall Shift Pattern 
+    def __init__(self, lenk_size=64, channel=32):
+        super().__init__()
+        self.ln3 = nn.Linear(2*channel, 64)
+        self.dg = DGF(64)
+
+    def forward(self, x1, x2):
+        y3 = paddle.concat([x1, x2], -1)
+        y3 = self.ln3(y3)
+        
+        yt = self.dg(y3)
+        y = yt + y3
+        return y
+
+
 class BF_PSP(nn.Layer):
     # Bitemporal Fusion based on Parall Shift Pattern 
     def __init__(self, lenk_size=64, channel=32):

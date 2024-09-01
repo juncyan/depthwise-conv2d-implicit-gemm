@@ -15,7 +15,7 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 
 
-from models.samcd import MobileSamCD_CSP, MobileSamCD_S3
+from models.samcd import MobileSamCD_CSP, MobileSamCD_S3, MobileSamCD_S4
 
 from core.work import Work
 
@@ -80,7 +80,8 @@ def parse_args():
 if __name__ == "__main__":
     print("main")
     args = parse_args()
-    model = MobileSamCD_S3(img_size=args.img_size)
+    model = MobileSamCD_S4(img_size=args.img_size)
     w = Work(model, args,'./output')
     w()
+
 

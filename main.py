@@ -15,7 +15,7 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 
 
-from models.samcd import MobileSamCD_CSP, MobileSamCD_S3, MobileSamCD_S4
+from models.samcd import MobileSamCD_S4, MSamCD_S1, MSamCD_S2
 
 from core.work import Work
 
@@ -51,7 +51,7 @@ def parse_args():
                         help='model name (default: msfgnet)')
     parser.add_argument('--img_size', type=int, default=256,
                         help='input image size (default: 256)')
-    parser.add_argument('--device', type=str, default='gpu:1',
+    parser.add_argument('--device', type=str, default='gpu:0',
                         choices=['gpu:0', 'gpu:1', 'cpu'],
                         help='device (default: gpu:0)')
     parser.add_argument('--dataset', type=str, default="CLCD",
@@ -80,7 +80,7 @@ def parse_args():
 if __name__ == "__main__":
     print("main")
     args = parse_args()
-    model = MobileSamCD_S4(img_size=args.img_size)
+    model = MSamCD_S2(img_size=args.img_size)
     w = Work(model, args,'./output')
     w()
 

@@ -1,8 +1,40 @@
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-
+from paddleseg.models import layers
 from models.utils import MLPBlock
+
+
+class BSGFM(nn.Layer):
+    #Bitemporal Spatial Gate Fusion Module
+    def __init__(self, dims, out_channels=64):
+        super().__init__()
+        self.cov1 = nn.Conv1D(2*dims, out_channels,3,padding=1,data_format='NLC')
+        self.bn1 = nn.BatchNorm1D(out_channels, data_format='NLC')
+        self.mlp1 = MLPBlock(out_channels, out_channels*2)
+
+        self.fc = nn.Linear(2,1)
+
+        self.mlp = MLPBlock(out_channels, out_channels)
+
+    def forward(self, x1, x2):
+        x = paddle.concat([x1, x2], -1)
+        x = self.cov1(x)
+        x = self.bn1(x)
+        x = self.mlp1(x)
+
+        xa = F.adaptive_avg_pool1d(x, 1)
+        xm = F.adaptive_avg_pool1d(x, 1)
+        xt = paddle.concat([xa, xm], -1)
+        xt = self.fc(xt)
+        xt = F.relu(xt)
+        y = x * xt
+       
+        y = self.mlp(y)
+        y = y + x
+        y = F.relu(y)
+        return y
+
 
 class DGF(nn.Layer):
     def __init__(self, dims):
@@ -29,10 +61,10 @@ class DGF(nn.Layer):
 
 class BF3(nn.Layer):
     # Bitemporal Fusion based on Parall Shift Pattern 
-    def __init__(self, lenk_size=64, channel=32):
+    def __init__(self,channel=32, out_channels=64):
         super().__init__()
-        self.ln3 = nn.Linear(2*channel, 64)
-        self.dg = DGF(64)
+        self.ln3 = nn.Linear(2*channel, out_channels)
+        self.dg = DGF(out_channels)
 
     def forward(self, x1, x2):
         y3 = paddle.concat([x1, x2], -1)
@@ -40,6 +72,36 @@ class BF3(nn.Layer):
         
         yt = self.dg(y3)
         y = yt + y3
+        return y
+
+
+class DGF2D(nn.Layer):
+    def __init__(self, dims):
+        super().__init__()
+        self.cov1 = layers.ConvBNReLU(2*dims, dims, 1)
+        
+        self.mconv = layers.DepthwiseConvBN(dims, dims, 3)
+        
+        self.fc = layers.ConvBNReLU(dims,dims, 3)
+        self.bn1 = nn.BatchNorm2D(dims)
+        self.mlp = layers.ConvBNReLU(dims, 64, 1)
+
+    def forward(self, x1, x2):
+        x = paddle.concat([x1, x2], 1)
+
+        x = self.cov1(x)
+
+        x1 = self.mconv(x)
+
+        x2 = F.adaptive_avg_pool2d(x, 1)
+        x2 = x * x2
+        x2 = self.fc(x2)
+        x2 = F.softmax(x2, axis=-1)
+
+        y = x1 + x2
+        y = self.bn1(y)
+        y = y + x
+        y = self.mlp(y)
         return y
 
 

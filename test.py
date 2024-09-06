@@ -1,16 +1,33 @@
 import paddle
-from models.decoder import VFC, SMDM
-from models.encoderfusion import DGF, BF3
-from models.samcd import MSamCD_S1
-from models.attention import ECA, ChannelGate, SpatialGate
-from models.encoderfusion import BSGFM
+import numpy as np
 
-# x = paddle.rand([2,64,32,32]).cuda()
-# m = SMDM(64,3).to("gpu")
-# y = m(x,x)
+
+from models.samcd import MSamCD_SSH, MSamCD_FSSH
+from models.dhsamcd import DHSamCD, DHSamCD_v2
+from models.attention import ECA, ChannelGate, SpatialGate, FFN, get_mgrid, RandFourierFeature
+from models.encoderfusion import BSGFM
+from core.misc.count_params import flops
+from paddleseg.utils import TimeAverager, op_flops_funs
+
+# x = get_mgrid(256, 256,2,0.5)
+# coords = np.expand_dims(x, axis=0)
+# coords = paddle.to_tensor(coords).cuda()
+# print(coords.shape
+# x = paddle.rand([4, 16, 10]).cuda()
+# m = RandFourierFeature(16, 10, 16).to("gpu")
+# y = m(x)
 # print(y.shape)
 
-x = paddle.rand([2,32,16]).cuda()
-m = BSGFM(16,32).to("gpu")
-y = m(x,x)
-print(y.shape)
+
+x = paddle.rand([2,3,512,512]).cuda()
+z = paddle.rand([2,2,512,512]).cuda()
+label = paddle.argmax(z, axis=1, keepdim=True)
+m = DHSamCD_v2(512).to("gpu")
+y = m(x, x)
+p = m.predict(y)
+print(p.shape)
+loss = m.loss(y, label)
+print(loss)
+
+flop_p = flops(m, [1, 6, 512, 512],
+custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})

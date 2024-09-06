@@ -3,6 +3,38 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddleseg.models import layers
 from models.utils import MLPBlock
+from models.attention import RandFourierFeature
+
+
+class BFSGFM(nn.Layer):
+    #Bitemporal Fourier Spatial Gate Fusion Module
+    def __init__(self, dims, out_channels=64):
+        super().__init__()
+        self.cov1 = nn.Conv1D(2*dims, out_channels,3,padding=1,data_format='NLC')
+        self.bn1 = nn.BatchNorm1D(out_channels, data_format='NLC')
+        self.mlp1 = MLPBlock(out_channels, out_channels*2)
+
+        self.fc = nn.Linear(2,1)
+        self.rff = RandFourierFeature(out_channels, out_channels)
+        self.mlp = MLPBlock(out_channels, out_channels)
+
+    def forward(self, x1, x2):
+        x = paddle.concat([x1, x2], -1)
+        x = self.cov1(x)
+        x = self.bn1(x)
+        x = self.mlp1(x)
+
+        xa = F.adaptive_avg_pool1d(x, 1)
+        xm = F.adaptive_max_pool1d(x, 1)
+        xt = paddle.concat([xa, xm], -1)
+        xt = self.fc(xt)
+        xt = F.relu(xt)
+        y = x * xt
+        y = y + x
+        y = self.rff(y)
+        y = self.mlp(y)
+        y = F.relu(y)
+        return y
 
 
 class BSGFM(nn.Layer):
@@ -13,8 +45,8 @@ class BSGFM(nn.Layer):
         self.bn1 = nn.BatchNorm1D(out_channels, data_format='NLC')
         self.mlp1 = MLPBlock(out_channels, out_channels*2)
 
+        self.lamda = self.create_parameter(shape=[1], default_initializer=nn.initializer.Constant(1.0), dtype='float16')
         self.fc = nn.Linear(2,1)
-
         self.mlp = MLPBlock(out_channels, out_channels)
 
     def forward(self, x1, x2):
@@ -24,59 +56,70 @@ class BSGFM(nn.Layer):
         x = self.mlp1(x)
 
         xa = F.adaptive_avg_pool1d(x, 1)
-        xm = F.adaptive_avg_pool1d(x, 1)
+        xm = F.adaptive_max_pool1d(x, 1)
         xt = paddle.concat([xa, xm], -1)
         xt = self.fc(xt)
         xt = F.relu(xt)
         y = x * xt
-       
+        y = y* self.lamda + x
         y = self.mlp(y)
-        y = y + x
         y = F.relu(y)
         return y
 
 
-class DGF(nn.Layer):
-    def __init__(self, dims):
+class BMF(nn.Layer):
+    #Bitemporal Image Multi-level Fusion Module
+    def __init__(self, in_channels, out_channels=64):
         super().__init__()
-        self.cov1 = nn.Conv1D(dims, dims,3,padding=1, groups=dims,data_format='NLC')
-        self.fc = nn.Linear(dims,dims)
-        self.bn1 = nn.BatchNorm1D(dims, data_format='NLC')
 
-        self.mlp = MLPBlock(dims, 2*dims)
+        self.cbr1 = layers.ConvBNReLU(in_channels, 32, 3, stride=2)
+        self.cbr2 = layers.ConvBNReLU(in_channels, 32, 3, stride=2)
 
-    def forward(self, x):
-        x1 = self.cov1(x)
+        self.cond1 = nn.Conv2D(64, 64, 3, padding=1)
+        self.cond3 = nn.Conv2D(64, 64, 3, padding=3, dilation=3)
+        self.cond5 = nn.Conv2D(64, 64, 3, padding=5, dilation=5)
 
-        x2 = F.adaptive_avg_pool1d(x, 1)
-        x2 = x * x2
-        x2 = self.fc(x2)
-        x2 = F.softmax(x2, axis=-1)
+        self.bn = nn.BatchNorm2D(64)
+        self.relu = nn.ReLU()
 
-        y = x1 + x2
-        y = self.bn1(y)
-        y = self.mlp(y)
-        y = y + x
-        return y
-
-class BF3(nn.Layer):
-    # Bitemporal Fusion based on Parall Shift Pattern 
-    def __init__(self,channel=32, out_channels=64):
-        super().__init__()
-        self.ln3 = nn.Linear(2*channel, out_channels)
-        self.dg = DGF(out_channels)
+        self.shift = layers.ConvBNReLU(64, out_channels, 3, 1, stride=2)
 
     def forward(self, x1, x2):
-        y3 = paddle.concat([x1, x2], -1)
-        y3 = self.ln3(y3)
-        
-        yt = self.dg(y3)
-        y = yt + y3
+        y1 = self.cbr1(x1)
+        y2 = self.cbr2(x2)
+
+        y = paddle.concat([y1, y2], 1)
+
+        y10 = self.cond1(y)
+        y11 = self.cond3(y)
+        y12 = self.cond5(y)
+       
+        yc = self.relu(self.bn(y10 + y11 + y12))
+        return self.shift(yc)
+
+class BDGF(nn.Layer):
+    def __init__(self, in_channels=6, out_channels=64):
+        super().__init__()
+        midc = out_channels // 2
+        self.cov1 = layers.ConvBNReLU(in_channels,midc,1)
+        self.cov2 = layers.DepthwiseConvBN(midc,midc,3,stride=2)
+        self.cov3 = layers.DepthwiseConvBN(midc,midc,3)
+        self.cov4 = layers.DepthwiseConvBN(midc,midc,3,stride=2)
+        self.cov5 = layers.DepthwiseConvBN(midc,midc,3)
+        self.con6 = layers.ConvBNReLU(midc,out_channels,1)
+
+    def forward(self, x):
+        y = self.cov1(x)
+        y = self.cov2(y)
+        y = self.cov3(y)
+        y = self.cov4(y)
+        y = self.cov5(y)
+        y = self.con6(y)
         return y
 
 
 class DGF2D(nn.Layer):
-    def __init__(self, dims):
+    def __init__(self, dims, num_features=64):
         super().__init__()
         self.cov1 = layers.ConvBNReLU(2*dims, dims, 1)
         

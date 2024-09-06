@@ -15,7 +15,8 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 
 
-from models.samcd import MobileSamCD_S4, MSamCD_S1, MSamCD_S2
+from models.samcd import MSamCD_SSH, MSamCD_FSSH
+from models.dhsamcd import DHSamCD, DHSamCD_v2
 
 from core.work import Work
 
@@ -47,7 +48,7 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 def parse_args():
     parser = argparse.ArgumentParser(description='Semantic Segmentation Overfitting Test')
     # model
-    parser.add_argument('--model', type=str, default='msfgnet',
+    parser.add_argument('--model', type=str, default='fssh',
                         help='model name (default: msfgnet)')
     parser.add_argument('--img_size', type=int, default=256,
                         help='input image size (default: 256)')
@@ -80,7 +81,8 @@ def parse_args():
 if __name__ == "__main__":
     print("main")
     args = parse_args()
-    model = MSamCD_S2(img_size=args.img_size)
+    m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2}
+    model = m[args.model](img_size=args.img_size)
     w = Work(model, args,'./output')
     w()
 

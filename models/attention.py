@@ -4,7 +4,165 @@ import paddle.nn.functional as F
 import paddle.tensor
 import paddleseg.models.layers as layers
 from typing import Union, Optional
+import numpy as np
 from models.utils import MLPBlock
+
+def img_mse(output, gt):
+  return 0.5 * ((output - gt) ** 2).mean()
+
+def img_psnr(mse):
+  return -10.0 * np.log10(2.0 * mse)
+
+class RandFourierFeature(nn.Layer):
+    '''
+   - **Initialization (`__init__`)**:
+     - `input_dim`: Dimensionality of the input data.
+     - `num_features`: Number of random Fourier features.
+     - `sigma`: Kernel width parameter.
+     - `W`: Random weights sampled from a normal distribution with mean 0 and standard deviation \( \frac{1}{\sigma} \).
+     - `b`: Random biases sampled uniformly from ([0, 2*pi]).
+
+     - **Forward Method**:
+     - Compute the dot product of the input `x` with the random weights `W`.
+     - Add the random biases `b` to the result.
+     - Compute the cosine and sine of the resulting values.
+     - Concatenate the cosine and sine features along the feature dimension.
+
+     - **Example Usage**:
+     - Create a random input tensor `x` with a batch size of 5 and input dimensionality of 10.
+     - Initialize the `RandomFourierFeatures` layer with the specified parameters.
+     - Compute the random Fourier features for the input tensor `x`.
+    This implementation allows you to create and use Random Fourier Features in PaddlePaddle, enabling efficient approximation of kernel methods for large-scale datasets.
+'''
+    def __init__(self, input_dim, num_features=256, sigma=1.0):
+        super(RandFourierFeature, self).__init__()
+        self.input_dim = input_dim
+        self.num_features = num_features
+        self.sigma = sigma
+        self.ln = nn.Linear(2*num_features, num_features)
+        # Initialize random weights and biases
+        self.W = self.create_parameter(
+            shape=[self.input_dim, self.num_features],
+            default_initializer=nn.initializer.Normal(mean=0.0, std=1.0 / sigma)
+        )
+        self.b = self.create_parameter(
+            shape=[self.num_features],
+            default_initializer=nn.initializer.Uniform(low=0.0, high=2 * np.pi)
+        )
+
+    def forward(self, input):
+        # Compute the random Fourier features
+        if len(input.shape) == 3:
+            x = input
+        elif len(input.shape) == 4:
+            B, C, W, H = input.shape
+            x = input.reshape([B, C, W*H])
+            x = x.transpose([0, 2, 1])
+        xW = paddle.matmul(x, self.W)
+        xW_plus_b = xW + self.b
+        cos_features = paddle.cos(xW_plus_b)
+        sin_features = paddle.sin(xW_plus_b)
+        features = paddle.concat([cos_features, sin_features], axis=-1)
+        features = self.ln(features)
+        features = features * x
+        features = F.relu(features)
+        
+        if len(input.shape) == 4:
+            B, C, W, H = input.shape
+            features = features.transpose([0, 2, 1])
+            features = features.reshape([B, C, W, H])
+     
+        return features
+
+class FCLayer(nn.Layer):
+    def __init__(self, in_features, out_features):
+        super().__init__()
+        self.linear = nn.Linear(in_features, out_features)
+        self.act = nn.ReLU()
+
+    def forward(self, input):
+        output = self.linear(input)
+        output = self.act(output)
+        return output
+
+class FCLayer_aff(nn.Layer):
+    def __init__(self, in_features, out_features):
+        super().__init__()
+        self.w = 32
+        self.h = 32
+        self.linear = nn.Linear(in_features, out_features)
+
+        self.affine1 = self.create_parameter(shape=[1,1,self.w, self.h], default_initializer=nn.initializer.Constant(1.0))
+        self.affine2 = self.create_parameter(shape=[1,1,self.w, self.h], default_initializer=nn.initializer.Constant(0.0))
+
+        self.act = nn.ReLU()
+
+    def forward(self, input, coord):
+        output = self.linear(input)
+        output = F.instance_norm(output)
+        affine = paddle.concat([self.affine1, self.affine2], axis=0)
+        affine = nn.functional.grid_sample(affine, coord, padding_mode='border', align_corners=True).reshape([2,-1,1])
+        output = output*affine[0]+affine[1]
+        output = self.act(output)
+        return output
+
+class CAM(nn.Layer):
+    def __init__(self, in_features=2, out_features=1,hidden_features=256, num_layers=3, num_frequencies=256, sigma = 10, scale = 80):
+        super().__init__()
+
+        self.pos_enc = RandFourierFeature(in_features,num_frequencies = num_frequencies,sigma = sigma, scale=scale)
+        self.num_layers = num_layers
+        for i in range(self.num_layers):
+            if i==0:
+                in_channel = self.pos_enc.out_features
+            else:
+                in_channel = hidden_features
+        setattr(self, f'FC_{i:d}', FCLayer_aff(in_channel, hidden_features, nn.ReLU(inplace=True)))
+        self.FC_final = FCLayer(hidden_features, out_features, nn.Sigmoid())
+
+    def forward(self, coords):
+        output = self.pos_enc(coords)
+        coords = (coords.view(1,-1,1,2)*2.0-1.0)
+        for i in range(self.num_layers):
+            fc = getattr(self, f'FC_{i:d}')
+        output = fc(output, coords)
+        output = self.FC_final(output)
+        return output
+
+class FFN(nn.Layer):
+    def __init__(self, in_features=2, out_features=1,hidden_features=256, num_layers=3, num_frequencies=256, sigma = 10, scale = -1):
+        super().__init__()
+
+        self.pos_enc = RandFourierFeature(in_features,num_frequencies = num_frequencies,sigma = sigma, scale=scale)
+        self.num_layers = num_layers
+        for i in range(self.num_layers):
+            if i==0:
+                in_channel = self.pos_enc.out_features
+            else:
+                in_channel = hidden_features
+        setattr(self, f'FC_{i:d}', FCLayer(in_channel, hidden_features, nn.ReLU(inplace=True)))
+        self.FC_final = FCLayer(hidden_features, out_features, nn.Sigmoid())
+
+    def forward(self, coords):
+        output = self.pos_enc(coords)
+        for i in range(self.num_layers):
+            fc = getattr(self, f'FC_{i:d}')
+        output = fc(output)
+        output = self.FC_final(output)
+        return output
+
+def get_mgrid(w,h, dim=2, offset=0.5):
+    x = np.arange(0, w, dtype=np.float32)
+    y = np.arange(0, h, dtype=np.float32)
+    # size = max(w,h)
+    # x = (x + offset) / size   # [0, size] -> [0, 1]
+    # y = (y + offset) / size   # [0, size] -> [0, 1]
+    x = (x + offset) / w   # [0, size] -> [0, 1]
+    y = (y + offset) / h   # [0, size] -> [0, 1]
+    X,Y = np.meshgrid(x,y, indexing='ij')
+    output = np.stack([X,Y], -1)
+    output = output.reshape(w*h, dim)
+    return output
 
 class ECA(nn.Layer):
     """Constructs a ECA module.
@@ -80,7 +238,7 @@ def lp_pool2d(input, norm_type,kernel_size,stride, ceil_mode = False):
     If the sum of all inputs to the power of `p` is
     zero, the gradient is set to zero as well.
 
-    See :class:`~torch.nn.LPPool2d` for details.
+    See :class:`~paddle.nn.LPPool2d` for details.
     """
    
     kw, kh = kernel_size
@@ -136,3 +294,94 @@ class CBAM(nn.Layer):
         if not self.no_spatial:
             x_out = self.SpatialGate(x_out)
         return x_out
+
+class Attention(nn.Layer):
+    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1):
+        super().__init__()
+        assert dim % num_heads == 0, f"dim {dim} should be divided by num_heads {num_heads}."
+
+        self.dim = dim
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        self.scale = qk_scale or head_dim ** -0.5
+
+        self.q = nn.Linear(dim, dim, bias_attr=qkv_bias)
+        self.kv = nn.Linear(dim, dim * 2, bias_attr=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+        self.sr_ratio = sr_ratio
+        if sr_ratio > 1:
+            self.sr = nn.Conv2D(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
+            self.norm = nn.LayerNorm(dim)
+
+        self.apply(self._init_weights)
+
+    def forward(self, x, H, W):
+        B, N, C = x.shape
+        q = self.q(x)
+        q = q.reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+
+        if self.sr_ratio > 1:
+            x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
+            x_ = self.sr(x_).reshape(B, C, -1).permute(0, 2, 1)
+            x_ = self.norm(x_)
+            kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        else:
+            kv = self.kv(x).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        k, v = kv[0], kv[1]
+
+        attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
+        
+    def _init_weights(self, m):
+        weight_attr = paddle.ParamAttr(initializer=1.0)
+        bias_attr = paddle.framework.ParamAttr(initializer=0.0)
+        if isinstance(m, nn.Linear):
+            m.bias_attr = bias_attr
+            m.weight_attr = weight_attr
+        elif isinstance(m, nn.LayerNorm):
+            m.bias_attr = bias_attr
+            m.weight_attr = weight_attr
+        elif isinstance(m, nn.Conv2D):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            
+            m.weight_attr = paddle.normal(0, np.sqrt(2.0 / fan_out))
+            # m.weight.data.normal_(0, np.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias_attr = paddle.framework.ParamAttr(initializer=0.0)
+
+class SEModule(nn.Layer):
+    def __init__(self, channels, reduction_channels):
+        super(SEModule, self).__init__()
+        self.fc1 = nn.Conv2D(
+            channels,
+            reduction_channels,
+            kernel_size=1,
+            padding=0,
+            bias_attr=True)
+        self.ReLU = nn.ReLU()
+        self.fc2 = nn.Conv2D(
+            reduction_channels,
+            channels,
+            kernel_size=1,
+            padding=0,
+            bias_attr=True)
+
+    def forward(self, x):
+        x_se = x.reshape(
+            [x.shape[0], x.shape[1], x.shape[2] * x.shape[3]]).mean(-1).reshape(
+                [x.shape[0], x.shape[1], 1, 1])
+
+        x_se = self.fc1(x_se)
+        x_se = self.ReLU(x_se)
+        x_se = self.fc2(x_se)
+        return x * F.sigmoid(x_se)

@@ -22,6 +22,7 @@ from copy import deepcopy
 import numpy as np
 import paddle
 import paddle.nn.functional as F
+import paddle.optimizer
 
 from .val import evaluate
 from .predict import test
@@ -38,9 +39,9 @@ def train(obj):
         optimizer (paddle.optimizer.Optimizer): The optimizer.
     """
     model = obj.model
-
+    # paddle.optimizer.lr.PolynomialDecay(obj.args.lr, obj.args.iters)
     lr = paddle.optimizer.lr.CosineAnnealingDecay(obj.args.lr, T_max=(obj.args.iters // 3), last_epoch=0.5)  # 余弦衰减
-    optimizer = paddle.optimizer.Adam(lr, parameters=model.parameters(),) 
+    optimizer = paddle.optimizer.Adam(lr, parameters=model.parameters()) 
 
     model.train()
     if obj.logger != None:

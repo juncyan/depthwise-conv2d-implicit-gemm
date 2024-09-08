@@ -17,6 +17,50 @@ class EFC(nn.Layer):
         y = self.cbr(y)
         return y
 
+class HSDecoderPAM(nn.Layer):
+    """ spatial channel attention module"""
+    def __init__(self, in_channels=64, out_channels=64):
+        super().__init__()
+        self.pam = layers.attention.PAM(in_channels)
+        self.st1conv1 = layers.ConvBNReLU(in_channels, in_channels, 3)
+        self.st1conv2 = EFC(in_channels)
+        self.rff = RandFourierFeature(in_channels, in_channels)
+        
+        self.st2conv1 = layers.ConvBNReLU(in_channels, in_channels, 1)
+        self.st2conv2 = EFC(in_channels)
+        
+        self.st3conv1 = layers.ConvBNReLU(in_channels, in_channels, 1)
+        self.st3conv2 = EFC(in_channels)
+        
+        self.conv1 = layers.ConvBNReLU(3*in_channels, in_channels, 1)
+        self.conv2 = layers.ConvBNReLU(in_channels, in_channels, 3)
+        self.deconv6 = layers.ConvBNReLU(in_channels,out_channels,1)
+
+    def forward(self, x1, x2, x3):
+        f3 = self.pam(x3)
+        f3 = self.st1conv1(f3)
+        fr3 = self.rff(f3)
+        f3 = f3 + fr3
+        f3 = self.st1conv2(f3)
+
+        f2 = x2 + f3
+        f2 = self.st2conv1(f2)
+        f2 = self.st2conv2(f2)
+
+        f3 = F.interpolate(f3, x1.shape[-2:], mode='bilinear', align_corners=True)
+        f2 = F.interpolate(f2, x1.shape[-2:], mode='bilinear', align_corners=True)
+        # print(x1.shape, f2.shape, f3.shape)
+        f1 = x1 + f2 + f3
+        f1 = self.st3conv1(f1)
+        f1 = self.st3conv2(f1)
+
+        f = paddle.concat([f1, f2, f3], 1)
+        f = self.conv1(f)
+        fd = self.conv2(f)
+        f = f + fd
+        f = F.interpolate(f, scale_factor=8, mode='bilinear', align_corners=True)
+        f = self.deconv6(f)
+        return f
 
 class HSDecoder(nn.Layer):
     """ spatial channel attention module"""

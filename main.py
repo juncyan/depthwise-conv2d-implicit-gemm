@@ -16,7 +16,7 @@ from paddleseg.models import UNet
 
 
 from models.samcd import MSamCD_SSH, MSamCD_FSSH
-from models.dhsamcd import DHSamCD, DHSamCD_v2
+from models.dhsamcd import DHSamCD, DHSamCD_v2, DHSamCD_v3, DHSamCD_v4
 
 from core.work import Work
 
@@ -65,13 +65,13 @@ def parse_args():
                         help='en_load_edge False')
     parser.add_argument('--num_classes', type=int, default=2,
                         help='num classes (default: 2)')
-    parser.add_argument('--batch_size', type=int, default=2,
+    parser.add_argument('--batch_size', type=int, default=4,
                         help='batch_size (default: 4)')
     parser.add_argument('--lr', type=float, default=1e-4, metavar='LR',
                         help='learning rate (default: 1e-4)')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='momentum (default: 0.9)')
-    parser.add_argument('--weight_decay', type=float, default=1e-4, metavar='M',
+    parser.add_argument('--weight_decay', type=float, default=5e-4, metavar='M',
                         help='w-decay (default: 5e-4)')
     parser.add_argument('--num_workers', type=int, default=8,
                         help='num_workers (default: 8)')
@@ -81,7 +81,7 @@ def parse_args():
 if __name__ == "__main__":
     print("main")
     args = parse_args()
-    m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2}
+    m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv3":DHSamCD_v3, 'hv4':DHSamCD_v4}
     model = m[args.model](img_size=args.img_size)
     w = Work(model, args,'./output')
     w()

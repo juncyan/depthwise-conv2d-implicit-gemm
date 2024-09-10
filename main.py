@@ -16,7 +16,7 @@ from paddleseg.models import UNet
 
 
 from models.samcd import MSamCD_SSH, MSamCD_FSSH
-from models.dhsamcd import DHSamCD, DHSamCD_v2, DHSamCD_v3, DHSamCD_v4
+from models.dhsamcd import DHSamCD, DHSamCD_v2, DHSamCD_v5, DHSamCD_v4
 
 from core.work import Work
 
@@ -81,8 +81,9 @@ def parse_args():
 if __name__ == "__main__":
     print("main")
     args = parse_args()
-    m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv3":DHSamCD_v3, 'hv4':DHSamCD_v4}
-    model = m[args.model](img_size=args.img_size)
+    m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
+    # model = m[args.model](img_size=args.img_size)
+    model = FCSiamConc(3,2)
     w = Work(model, args,'./output')
     w()
 

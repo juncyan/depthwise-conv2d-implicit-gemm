@@ -6,7 +6,7 @@ import paddle.nn as nn
 import numpy as np
 import datetime
 from paddleseg.utils import worker_init_fn
-
+from paddleseg.models.losses import BCELoss
 
 from .datasets import DataReader, TestReader
 from .misc import load_logger
@@ -66,15 +66,14 @@ class Work():
             return_list=True,
             worker_init_fn=worker_init_fn, )
     
-    def loss(logits, labels):
+    def loss(self, logits, labels):
         if logits.shape == labels.shape:
             labels = paddle.argmax(labels,axis=1)
         elif len(labels.shape) == 3:
             labels = labels
         else:
             assert "pred.shape not match label.shape"
-        #logits = F.softmax(logits,dim=1)
-        return paddle.nn.CrossEntropyLoss(axis=1)(logits,labels)
+        return BCELoss()(logits,labels)
         
     
     def _seed_init(self, seed=32767):

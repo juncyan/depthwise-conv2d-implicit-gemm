@@ -17,11 +17,10 @@ class EFC(nn.Layer):
         y = self.cbr(y)
         return y
 
-class HSDecoderPAM(nn.Layer):
+class HSDecoderIn4(nn.Layer):
     """ spatial channel attention module"""
     def __init__(self, in_channels=64, out_channels=64):
         super().__init__()
-        self.pam = layers.attention.PAM(in_channels)
         self.st1conv1 = layers.ConvBNReLU(in_channels, in_channels, 3)
         self.st1conv2 = EFC(in_channels)
         self.rff = RandFourierFeature(in_channels, in_channels)
@@ -37,8 +36,7 @@ class HSDecoderPAM(nn.Layer):
         self.deconv6 = layers.ConvBNReLU(in_channels,out_channels,1)
 
     def forward(self, x1, x2, x3):
-        f3 = self.pam(x3)
-        f3 = self.st1conv1(f3)
+        f3 = self.st1conv1(x3)
         fr3 = self.rff(f3)
         f3 = f3 + fr3
         f3 = self.st1conv2(f3)

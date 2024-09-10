@@ -13,7 +13,7 @@ from models.utils import MLPBlock
 from models.mobilesam import MobileSAM
 from models.kan import KANLinear, KAN
 from models.encoderfusion import BDGF, BF_PS2, DGF2D, Bit_Fusion, BSGFM, BFSGFM, BMF
-from models.decoder import Decoder_SCABF_v2, HSDecoder, HSDecoderPAM
+from models.decoder import Decoder_SCABF_v2, HSDecoder, HSDecoderIn4
 
 
 features_shape = {256:np.array([[1024, 128],[256,160],[256,320],[256,320]]),
@@ -36,14 +36,16 @@ class DHSamCD_v4(nn.Layer):
             load_entire_model(self.sam, sam_checkpoint)
             self.sam.image_encoder.build_abs()
         
+        self.lcl = nn.Linear(160+320+320, 320)
+        self.lc2 = nn.Linear(160+320+320, 320)
+
         self.bff1 = BSGFM(128,64)
         self.bff3 = BSGFM(320,64)
-        self.cbr1 = layers.ConvBNReLU(512, 64, kernel_size=1)
-        self.fusion = HSDecoderPAM(64)
+        self.cbr1 = layers.ConvBNReLU(512, 128, kernel_size=1)
+        self.fusion = HSDecoder(64)
 
         self.cls1 = layers.ConvBN(64,2,7)
 
-    
     def forward(self, x1, x2=None):
         if x2 is None:
             x2 = x1[:,3:,:,:]
@@ -64,10 +66,12 @@ class DHSamCD_v4(nn.Layer):
     def extractor(self, x1, x2):
         b1, b2, b3, b4, b = self.feature_extractor(x1)
         p1, p2, p3, p4, p = self.feature_extractor(x2)
-        # print(b1.shape, b2.shape, b3.shape, b4.shape)
-
+        bl = paddle.concat((b2, b3, b4), axis=-1)
+        pl = paddle.concat((p2, p3, p4), axis=-1)
+        bl = self.lcl(bl)
+        pl = self.lc2(pl)
         f1 = self.bff1(b1, p1)
-        f3 = self.bff3(b3, p3)
+        f3 = self.bff3(bl, pl)
         f1 = features_transfer(f1)
         f3 = features_transfer(f3)
         return f1, f3, b, p
@@ -81,10 +85,10 @@ class DHSamCD_v4(nn.Layer):
         l1 = BCELoss()(pred, label)
         label = paddle.argmax(label, axis=1)
         l2 = LovaszSoftmaxLoss()(pred, label)
-        loss = l1 + 0.75*l2
+        loss = l1 + 0.5*l2
         return loss
     
-class DHSamCD_v3(nn.Layer):
+class DHSamCD_v5(nn.Layer):
     def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
         super().__init__()
         self.sam = MobileSAM(img_size=img_size)
@@ -95,8 +99,8 @@ class DHSamCD_v3(nn.Layer):
         
         self.bff1 = BSGFM(128,64)
         self.bff3 = BSGFM(320,64)
-        self.cbr1 = layers.ConvBNReLU(512, 128, kernel_size=1)
-        self.fusion = HSDecoder(64)
+        self.cbr1 = layers.ConvBNReLU(512,128, kernel_size=1)
+        self.fusion = HSDecoderIn4(64)
 
         self.cls1 = layers.ConvBN(64,2,7)
 
@@ -106,9 +110,7 @@ class DHSamCD_v3(nn.Layer):
             x2 = x1[:,3:,:,:]
             x1 = x1[:,:3,:,:]
         
-        f1, f3, b4, p4 = self.extractor(x1, x2)
-        f5 = paddle.concat((b4, p4), axis=1)
-        f5 = self.cbr1(f5)
+        f1, f3, f5 = self.extractor(x1, x2)
         f = self.fusion(f1, f3, f5)
         f = self.cls1(f)
 
@@ -124,10 +126,12 @@ class DHSamCD_v3(nn.Layer):
         # print(b1.shape, b2.shape, b3.shape, b4.shape)
 
         f1 = self.bff1(b1, p1)
-        f3 = self.bff3(b4, p4)
+        f3 = self.bff3(b2, p2)
+        f4 = self.cbr1(b4, p4)
         f1 = features_transfer(f1)
         f3 = features_transfer(f3)
-        return f1, f3, b, p
+        f4 = features_transfer(f4)
+        return f1, f3, f4
     
     @staticmethod
     def predict(pred):

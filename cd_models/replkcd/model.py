@@ -3,13 +3,12 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddleseg.models import layers
 # from paddleseg.models.backbones import ResNet34_vd
-from models.backbone.resnet import ResbackBone, ResNet
 
 
 from .blocks import *
 from .utils import *
 
-class RepLKCD(nn.Layer):
+class CD_RLKNet(nn.Layer):
     #large kernel pseudo siamese network
     def __init__(self, in_channels=3, kernels=9):
         super().__init__()

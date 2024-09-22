@@ -129,6 +129,20 @@ class ImageEncoderViT(nn.Layer):
         x = self.neck(x.transpose([0, 3, 1, 2]))
 
         return x
+    
+    def extract_features(self, x):
+        x = self.patch_embed(x)
+        if self.pos_embed is not None:
+            x = x + self.pos_embed
+
+        y = [x]
+        for blk in self.blocks:
+            x = blk(x)
+            y.append(x)
+
+        x = self.neck(x.transpose([0, 3, 1, 2]))
+
+        return y[0], y[9], x
 
 
 class Block(nn.Layer):

@@ -22,33 +22,36 @@ from paddleseg.utils import load_entire_model
 from .modeling import ImageEncoderViT, MaskDecoder, PromptEncoder, Sam, TwoWayTransformer, TinyViT
 
 
-def build_sam_vit_h(checkpoint=None):
+def build_sam_vit_h(checkpoint=None, img_size=1024):
     return _build_sam(
         encoder_embed_dim=1280,
         encoder_depth=32,
         encoder_num_heads=16,
         encoder_global_attn_indexes=[7, 15, 23, 31],
+        img_size=img_size,
         checkpoint=checkpoint, )
 
 
 build_sam = build_sam_vit_h
 
 
-def build_sam_vit_l(checkpoint=None):
+def build_sam_vit_l(checkpoint=None, img_size=1024):
     return _build_sam(
         encoder_embed_dim=1024,
         encoder_depth=24,
         encoder_num_heads=16,
         encoder_global_attn_indexes=[5, 11, 17, 23],
+         img_size=img_size,
         checkpoint=checkpoint, )
 
 
-def build_sam_vit_b(checkpoint=None):
+def build_sam_vit_b(checkpoint=None, img_size=1024):
     return _build_sam(
         encoder_embed_dim=768,
         encoder_depth=12,
         encoder_num_heads=12,
         encoder_global_attn_indexes=[2, 5, 8, 11],
+        img_size=img_size,
         checkpoint=checkpoint, )
 
 
@@ -111,9 +114,10 @@ def _build_sam(
         encoder_depth,
         encoder_num_heads,
         encoder_global_attn_indexes,
+        img_size=1024,
         checkpoint=None, ):
     prompt_embed_dim = 256
-    image_size = 1024
+    image_size = img_size
     vit_patch_size = 16
     image_embedding_size = image_size // vit_patch_size
     sam = Sam(

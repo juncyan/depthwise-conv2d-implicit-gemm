@@ -1,1 +1,1 @@
-from .model import RepLKCD
+from .model import CD_RLKNet

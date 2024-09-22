@@ -10,13 +10,16 @@ from cd_models.stanet import STANet
 from cd_models.p2v import P2V
 from cd_models.msfgnet import MSFGNet
 from cd_models.fc_siam_conc import FCSiamConc
+from cd_models.dsamnet import DSAMNet
 from cd_models.snunet import SNUNet
 from cd_models.f3net import F3Net
 from paddleseg.models import UNet
-
+from cd_models.replkcd import CD_RLKNet
 
 from models.samcd import MSamCD_SSH, MSamCD_FSSH
 from models.dhsamcd import DHSamCD, DHSamCD_v2, DHSamCD_v5, DHSamCD_v4
+from models.model import CDSam_v2
+from models.samcd import SamB_CD
 
 from core.work import Work
 
@@ -65,15 +68,15 @@ def parse_args():
                         help='en_load_edge False')
     parser.add_argument('--num_classes', type=int, default=2,
                         help='num classes (default: 2)')
-    parser.add_argument('--batch_size', type=int, default=4,
+    parser.add_argument('--batch_size', type=int, default=8,
                         help='batch_size (default: 4)')
     parser.add_argument('--lr', type=float, default=1e-4, metavar='LR',
-                        help='learning rate (default: 1e-4)')
+                        help='learning rate (default: 2.8e-4)')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='momentum (default: 0.9)')
     parser.add_argument('--weight_decay', type=float, default=5e-4, metavar='M',
                         help='w-decay (default: 5e-4)')
-    parser.add_argument('--num_workers', type=int, default=8,
+    parser.add_argument('--num_workers', type=int, default=4,
                         help='num_workers (default: 8)')
     args = parser.parse_args()
     return args
@@ -82,8 +85,7 @@ if __name__ == "__main__":
     print("main")
     args = parse_args()
     m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
-    # model = m[args.model](img_size=args.img_size)
-    model = FCSiamConc(3,2)
+    model = SamB_CD(img_size=args.img_size)#m[args.model](img_size=args.img_size)
     w = Work(model, args,'./output')
     w()
 

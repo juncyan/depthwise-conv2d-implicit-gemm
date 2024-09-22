@@ -9,11 +9,9 @@ from paddleseg.models import layers
 from paddleseg.models.losses import LovaszSoftmaxLoss, BCELoss
 from paddleseg.utils import load_entire_model
 
-from models.utils import MLPBlock
-from models.mobilesam import MobileSAM
-from models.kan import KANLinear, KAN
-from models.encoderfusion import BDGF, BF_PS2, DGF2D, Bit_Fusion, BSGFM, BFSGFM, BMF
-from models.decoder import Fusion, Fusion2, Decoder_stage3, Decoder_SCAB, Decoder_SCAB_in2
+from models.model import BSGFM
+from models.attention import RandFourierFeature, ECA
+from models.segment_anything.build_sam import build_sam_vit_b
 
 
 features_shape = {256:np.array([[1024, 128],[256,160],[256,320],[256,320]]),
@@ -27,116 +25,56 @@ def features_transfer(x):
         x = x.reshape((B, C, wh, wh))
         return x
 
-
-class MSamCD_FSSH(nn.Layer):
-    def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
+class SamB_CD(nn.Layer):
+    def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_b.pdparams"):
         super().__init__()
-        self.sam = MobileSAM(img_size=img_size)
-        self.sam.eval()
-        if sam_checkpoint is not None:
-            load_entire_model(self.sam, sam_checkpoint)
-            self.sam.image_encoder.build_abs()
+        self.sam = build_sam_vit_b(checkpoint=sam_checkpoint, img_size=img_size)
         
-        # self.aencoder = BMF(3,64)
-        self.bff1 = BFSGFM(128,64)
-        # self.bff4 = BFSGFM(320,64)
-        self.cbr1 = layers.ConvBNReLU(512, 128, kernel_size=1)
-        self.fusion = Decoder_SCAB_in2(64)
+        self.bff1 = BSGFM(768,64)
+        self.bff3 = BSGFM(768,64)
+        self.bff4 = BSGFM(256,64)
+        self.fusion = HSDecoder(64)
 
-        # self.cbr2 = layers.ConvBNReLU(128, 64, kernel_size=1)
         self.cls1 = layers.ConvBN(64,2,7)
 
-    
     def forward(self, x1, x2=None):
         if x2 is None:
             x2 = x1[:,3:,:,:]
             x1 = x1[:,:3,:,:]
         
-        f1, b4, p4 = self.extractor(x1, x2)
-        f5 = paddle.concat((b4, p4), axis=1)
-        f5 = self.cbr1(f5)
-        f = self.fusion(f1, f5)
-        # y = self.aencoder(x1, x2)
-        # f = paddle.concat([f, y],axis=1)
-        # f = F.interpolate(f, scale_factor=4, mode='bilinear')
-        # f = self.cbr2(f)
+        f1, f3, f4 = self.extractor(x1, x2)
+        f = self.fusion(f1, f3, f4)
         f = self.cls1(f)
 
-        return f 
+        return f
     
     def feature_extractor(self, x):
-        [f1, f2,f3,f4], f = self.sam.image_encoder.extract_features(x)
-        return f1, f2, f3, f4, f
+        f1, f2,f3 = self.sam.image_encoder.extract_features(x)
+        return f1, f2, f3
     
     def extractor(self, x1, x2):
-        b1, b2, b3, b4, b = self.feature_extractor(x1)
-        p1, p2, p3, p4, p = self.feature_extractor(x2)
+        b1, b2, b = self.feature_extractor(x1)
+        p1, p2, p = self.feature_extractor(x2)
         # print(b1.shape, b2.shape, b3.shape, b4.shape)
+        b1 = paddle.reshape(b1, [b1.shape[0], -1, b1.shape[-1]])
+        b2 = paddle.reshape(b2, [b2.shape[0], -1, b2.shape[-1]])
+        p1 = paddle.reshape(p1, [p1.shape[0], -1, p1.shape[-1]])
+        p2 = paddle.reshape(p2, [p2.shape[0], -1, p2.shape[-1]])
 
         f1 = self.bff1(b1, p1)
-        # f4 = self.bff4(b4, p4)
-        f1 = features_transfer(f1)
-        # f4 = features_transfer(f4)
-        return f1, b, p
-    
-    @staticmethod
-    def predict(pred):
-        return pred
-    
-    @staticmethod
-    def loss(pred, label):  
-        l1 = BCELoss()(pred, label)
-        label = paddle.argmax(label, axis=1)
-        l2 = LovaszSoftmaxLoss()(pred, label)
-        loss = l1 + 0.5*l2 #+ 0.5*la2
-        return loss
+        f3 = self.bff3(b2, p2)
 
-
-class MSamCD_SSH(nn.Layer):
-    def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
-        super().__init__()
-        self.sam = MobileSAM(img_size=img_size)
-        self.sam.eval()
-        if sam_checkpoint is not None:
-            load_entire_model(self.sam, sam_checkpoint)
-            self.sam.image_encoder.build_abs()
+        b4 = paddle.reshape(b, [b.shape[0], b.shape[1], -1])
+        b4 = paddle.transpose(b4, perm=[0, 2, 1])
+        p4 = paddle.reshape(p, [b.shape[0], b.shape[1], -1])
+        p4 = paddle.transpose(p4, perm=[0, 2, 1])
         
-        self.bff1 = BFSGFM(128,64)
-        self.bff4 = BFSGFM(320,64)
-
-        self.cbr = layers.ConvBNReLU(512, 128, kernel_size=1)
-        self.fusion = Decoder_SCAB(64)
-    
-        self.cls1 = layers.ConvBN(64,2,7)
-
-    
-    def forward(self, x1, x2=None):
-        if x2 is None:
-            x2 = x1[:,3:,:,:]
-            x1 = x1[:,:3,:,:]
-
-        f1, f4 , b4, p4 = self.extractor(x1, x2)
-        f5 = paddle.concat((b4, p4), axis=1)
-        f5 = self.cbr(f5)
-        f = self.fusion(f1, f4, f5)
-        f = self.cls1(f)
-
-        return f #, y
-    
-    def feature_extractor(self, x):
-        [f1, f2,f3,f4], f = self.sam.image_encoder.extract_features(x)
-        return f1, f2, f3, f4, f
-    
-    def extractor(self, x1, x2):
-        b1, b2, b3, b4, b = self.feature_extractor(x1)
-        p1, p2, p3, p4, p = self.feature_extractor(x2)
-        # print(b1.shape, b2.shape, b3.shape, b4.shape)
-
-        f1 = self.bff1(b1, p1)
         f4 = self.bff4(b4, p4)
+
         f1 = features_transfer(f1)
+        f3 = features_transfer(f3)
         f4 = features_transfer(f4)
-        return f1, f4 , b, p
+        return f1, f3, f4
     
     @staticmethod
     def predict(pred):
@@ -147,62 +85,61 @@ class MSamCD_SSH(nn.Layer):
         l1 = BCELoss()(pred, label)
         label = paddle.argmax(label, axis=1)
         l2 = LovaszSoftmaxLoss()(pred, label)
-        loss = 0.5*l1 + l2 #+ 0.5*la2
+        loss = l1 + 0.75*l2
         return loss
 
 
-class MobileSamCD_osg(nn.Layer):
-    def __init__(self, img_size=256,sam_checkpoint=r"/home/aistudio/vit_t.pdparams"):
+class HSDecoder(nn.Layer):
+    """ spatial channel attention module"""
+    def __init__(self, in_channels=64, out_dims=64):
         super().__init__()
-        self.sam = MobileSAM(img_size=img_size)
-        self.sam.eval()
-        if sam_checkpoint is not None:
-            load_entire_model(self.sam, sam_checkpoint)
-            self.sam.image_encoder.build_abs()
+        dims = 64 # 2*in_channels
+        self.st1conv1 = layers.ConvBNReLU(dims, in_channels, 1)
+        self.st1conv2 = EFC(in_channels)
+        self.rff = RandFourierFeature(in_channels, in_channels)
 
-        self.bf1 = Bit_Fusion(256)
-        self.bf2 = Bit_Fusion(640)
+        self.st2conv1 = layers.ConvBNReLU(in_channels, in_channels, 1)
+        self.st2conv2 = EFC(in_channels)
         
-        self.conv1 = layers.ConvBNReLU(320, 256, 1)
-
-        self.fusion = Fusion(64)
-
-        # self.conv1 = layers.DepthwiseConvBN(6, 6, kernel_size=3)
-        # self.conv2 = layers.ConvBNReLU(6, 2, kernel_size=7)
-        self.cls = layers.ConvBN(64,2,7)
+        self.st3conv1 = layers.ConvBNReLU(in_channels, in_channels, 1)
+        self.st3conv2 = EFC(in_channels)
         
-    def feature_extractor(self, x):
-        (f1, f2,f3,f4),_ = self.sam.image_encoder.extract_features(x)
-        return f1, f2, f3, f4
-    
-    def extractor(self, x1, x2):
-        b1, b2, b3, b4 = self.feature_extractor(x1)
-        p1, p2, p3, p4 = self.feature_extractor(x2)
-     
-        f1 = self.bf1(b1, p1)
-        f4 = self.bf2(b4, p4)
+        self.conv1 = layers.ConvBNReLU(3*in_channels, in_channels, 1)
+        self.conv2 = layers.ConvBNReLU(in_channels, in_channels, 3)
+        self.deconv6 = layers.ConvBNReLU(in_channels,out_dims,1)
 
-        f1 = features_transfer(f1)
-        f4 = features_transfer(f4)
-        return f1, f4
-    
-    def forward(self, x1, x2=None):
-        if x2 == None:
-            x2 = x1[:,3:,:,:]
-            x1 = x1[:,:3,:,:]
+    def forward(self, x1, x2, x3):
+        f3 = self.st1conv1(x3)
+        fr3 = self.rff(f3)
+        f3 = f3 + fr3
+        f3 = self.st1conv2(f3)
 
-        f1, f2 = self.extractor(x1, x2)
+        f2 = x2 + f3
+        f2 = self.st2conv1(f2)
+        f2 = self.st2conv2(f2)
 
-        y = self.fusion(f1, f2)
+        # f3 = F.interpolate(f3, x1.shape[-2:], mode='bilinear', align_corners=True)
+        # f2 = F.interpolate(f2, x1.shape[-2:], mode='bilinear', align_corners=True)
+        # print(x1.shape, f2.shape, f3.shape)
+        f1 = x1 + f2 + f3
+        f1 = self.st3conv1(f1)
+        f1 = self.st3conv2(f1)
 
-        # y = paddle.concat((fi, y), axis=1)
-        y = self.cls(y)
+        f = paddle.concat([f1, f2, f3], 1)
+        f = self.conv1(f)
+        fd = self.conv2(f)
+        f = f + fd
+        f = F.interpolate(f, scale_factor=16, mode='bilinear', align_corners=True)
+        f = self.deconv6(f)
+        return f
+
+
+class EFC(nn.Layer):
+    def __init__(self, in_channels, kernel_size=3):
+        super().__init__()
+        self.eca = ECA(kernel_size)
+        self.cbr = layers.ConvBNReLU(in_channels, in_channels, kernel_size=kernel_size)
+    def forward(self, x):
+        y = self.eca(x)
+        y = self.cbr(y)
         return y
-
-    @staticmethod
-    def loss(pred, label):
-        l1 = BCELoss()(pred, label)
-        label = paddle.argmax(label, axis=1)
-        l2 = LovaszSoftmaxLoss()(pred, label)
-        loss = l1 + 0.5*l2
-        return loss

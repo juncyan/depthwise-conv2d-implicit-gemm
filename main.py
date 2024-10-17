@@ -16,10 +16,9 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 from cd_models.replkcd import CD_RLKNet
 
-from models.samcd import MSamCD_SSH, MSamCD_FSSH
 from models.dhsamcd import DHSamCD, DHSamCD_v2, DHSamCD_v5, DHSamCD_v4
 from models.model import CDSam_v2
-from models.samcd import SamB_CD
+from models.samcd import SamH_CD
 
 from core.work import Work
 
@@ -84,8 +83,8 @@ def parse_args():
 if __name__ == "__main__":
     print("main")
     args = parse_args()
-    m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
-    model = SamB_CD(img_size=args.img_size)#m[args.model](img_size=args.img_size)
+    # m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
+    model = SamH_CD(img_size=args.img_size)#m[args.model](img_size=args.img_size)
     w = Work(model, args,'./output')
     w()
 

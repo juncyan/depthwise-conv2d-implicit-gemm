@@ -11,7 +11,7 @@ from paddleseg.utils import load_entire_model
 
 from models.model import BSGFM
 from models.attention import RandFourierFeature, ECA
-from models.segment_anything.build_sam import build_sam_vit_b
+from models.segment_anything.build_sam import build_sam_vit_b, build_sam_vit_l
 
 
 features_shape = {256:np.array([[1024, 128],[256,160],[256,320],[256,320]]),
@@ -25,13 +25,13 @@ def features_transfer(x):
         x = x.reshape((B, C, wh, wh))
         return x
 
-class SamB_CD(nn.Layer):
-    def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_b.pdparams"):
+class SamH_CD(nn.Layer):
+    def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_h.pdparams"):
         super().__init__()
-        self.sam = build_sam_vit_b(checkpoint=sam_checkpoint, img_size=img_size)
+        self.sam = build_sam_vit_l(checkpoint=sam_checkpoint, img_size=img_size)
         
-        self.bff1 = BSGFM(768,64)
-        self.bff3 = BSGFM(768,64)
+        self.bff1 = BSGFM(1024,64)
+        self.bff3 = BSGFM(1024,64)
         self.bff4 = BSGFM(256,64)
         self.fusion = HSDecoder(64)
 
@@ -55,7 +55,7 @@ class SamB_CD(nn.Layer):
     def extractor(self, x1, x2):
         b1, b2, b = self.feature_extractor(x1)
         p1, p2, p = self.feature_extractor(x2)
-        # print(b1.shape, b2.shape, b3.shape, b4.shape)
+        # print(b1.shape, b2.shape, b.shape)
         b1 = paddle.reshape(b1, [b1.shape[0], -1, b1.shape[-1]])
         b2 = paddle.reshape(b2, [b2.shape[0], -1, b2.shape[-1]])
         p1 = paddle.reshape(p1, [p1.shape[0], -1, p1.shape[-1]])

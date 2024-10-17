@@ -9,8 +9,8 @@ from paddleseg.utils import worker_init_fn
 from paddleseg.models.losses import BCELoss
 
 from .datasets import DataReader, TestReader
-from .misc import load_logger
-from .misc import train
+from .cdmisc import load_logger
+from .cdmisc import train
 
 
 class Work():

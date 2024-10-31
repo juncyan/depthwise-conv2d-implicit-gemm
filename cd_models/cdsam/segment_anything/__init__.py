@@ -12,24 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This implementation refers to: https://github.com/facebookresearch/segment-anything
 
-import paddle
-from tool.cdloader import TestReader
-from work.predict import predict
-from models.samcd import MobileSamCD
-
-
-dataset_name = "LEVIR_CD"
-# dataset_name = "GVLM_CD"
-# dataset_name = "CLCD"
-# dataset_name = "SYSU_CD"
-dataset_name = "WHU_BCD"
-dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
-num_classes = 2
-datatest = TestReader(dataset_path,"test",en_concat=True)
-
-model = MobileSamCD(img_size=512)
-
-
-weight_path = r"/home/jq/Code/paddle/output/whu_bcd/SNUNet_2024_06_30_00/SNUNet_best.pdparams"
-predict(model, datatest,weight_path, dataset_name)
+from .build_sam import (
+    build_sam,
+    build_sam_vit_h,
+    build_sam_vit_l,
+    build_sam_vit_b,
+    sam_model_registry, )
+from .predictor import SamPredictor
+from .automatic_mask_generator import SamAutomaticMaskGenerator

@@ -12,24 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This implementation refers to: https://github.com/facebookresearch/segment-anything
 
-import paddle
-from tool.cdloader import TestReader
-from work.predict import predict
-from models.samcd import MobileSamCD
-
-
-dataset_name = "LEVIR_CD"
-# dataset_name = "GVLM_CD"
-# dataset_name = "CLCD"
-# dataset_name = "SYSU_CD"
-dataset_name = "WHU_BCD"
-dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
-num_classes = 2
-datatest = TestReader(dataset_path,"test",en_concat=True)
-
-model = MobileSamCD(img_size=512)
-
-
-weight_path = r"/home/jq/Code/paddle/output/whu_bcd/SNUNet_2024_06_30_00/SNUNet_best.pdparams"
-predict(model, datatest,weight_path, dataset_name)
+from .sam import Sam
+from .clip_paddle import *
+from .image_encoder import ImageEncoderViT
+from .mask_decoder import MaskDecoder
+from .prompt_encoder import PromptEncoder
+from .transformer import TwoWayTransformer
+from .tiny_vit_sam import TinyViT

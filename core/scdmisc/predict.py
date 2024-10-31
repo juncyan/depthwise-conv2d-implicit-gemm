@@ -22,11 +22,9 @@ import glob
 import pandas as pd
 
 from paddleseg.utils import TimeAverager, op_flops_funs
-from common.cdmetric import ConfuseMatrixMeter
-from common.metrics import Metrics
-from common.logger import load_logger
-from common.csver import cls_count
-from work.count_params import flops
+from .metric import SCDD_eval_all
+from core.cdmisc.logger import load_logger
+from core.cdmisc.count_params import flops
 
 
 def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
@@ -177,7 +175,7 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
     logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))       
 
 
-def test(model, dataset, args):
+def test(obj=None):
     """
     Launch evalution.
 
@@ -186,33 +184,36 @@ def test(model, dataset, args):
         dataset (paddle.io.DataLoader): Used to read and process test datasets.
         weights_path (string, optional): weights saved local.
     """
+    assert obj != None, "obj is None, please check!"
 
-    if args.best_model_path:
-        layer_state_dict = paddle.load(f"{args.best_model_path}")
+    model = obj.model
+    model.eval()
+    if obj.best_model_path:
+        layer_state_dict = paddle.load(f"{obj.best_model_path}")
         model.set_state_dict(layer_state_dict)
     else:
         exit()
 
-    img_ab_concat = args.img_ab_concat
+    img_ab_concat = obj.args.img_ab_concat
 
     time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
 
-    img_dir = f"/mnt/data/Results/{args.data_name}/{args.model_name}_{time_flag}"
+    img_dir = f"/mnt/data/Results/{obj.args.dataset}/{obj.model_name}_{time_flag}"
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
 
-    color_label = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
+    color_label = obj.color_label
 
     logger = load_logger(f"{img_dir}/prediction.log")
-    logger.info(f"test {args.model_name} on {args.data_name}")
+    logger.info(f"test {obj.args.dataset} on {obj.model_name}")
 
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
-    evaluator = Metrics(num_class=args.num_classes)
+    evaluator = Metrics(num_class=obj.args.num_classes)
     model.eval()
     with paddle.no_grad():
-        for _, data in enumerate(dataset):
+        for _, data in enumerate(obj.test_loader):
 
             reader_cost_averager.record(time.time() - batch_start)
 
@@ -232,7 +233,7 @@ def test(model, dataset, args):
                 pred = model.predict(pred)
             else:
                 if (type(pred) == tuple) or (type(pred) == list):
-                    pred = pred[args.pred_idx]
+                    pred = pred[0]
 
             batch_cost_averager.record(
                 time.time() - batch_start, num_samples=len(label))
@@ -274,16 +275,16 @@ def test(model, dataset, args):
     macro_f1 = evaluator.Macro_F1()
     class_recall = evaluator.Recall()
 
-    infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(dataset), batch_cost, reader_cost)
-    args.logger.info(infor)
+    infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(obj.test_num, batch_cost, reader_cost)
+    obj.logger.info(infor)
     infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Macro_F1: {:.4f}".format(
             miou, acc, kappa, macro_f1)
-    args.logger.info(infor)
+    obj.logger.info(infor)
 
-    args.logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
-    args.logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
-    args.logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-    args.logger.info("[METRICS] Class F1: " + str(np.round(f1, 4)))
+    obj.logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
+    obj.logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
+    obj.logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
+    obj.logger.info("[METRICS] Class F1: " + str(np.round(f1, 4)))
 
     if img_ab_concat:
         images = data['img'].cuda()
@@ -291,12 +292,6 @@ def test(model, dataset, args):
         flop_p = flops(
         model, [1, c, h, w],
         custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
-
-        # inputs = paddle.static.InputSpec([None,c, h, w],dtype="float16",name="inputs")
-        # m = paddle.Model(model, inputs)
-        # z = m.summary()
-        # total_params = sum(p.numel() for p in model.parameters())
-        # train_params = sum(p.numel() for p in model.parameters() if p.stop_gradient == False)
             
     else:
         img1 = data['img1'].cuda()
@@ -315,154 +310,18 @@ def test(model, dataset, args):
         data.append(lab)
     if data != []:
         data = np.array(data)
-        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{args.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)
+        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{obj.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)
 
-
-def test_last(model, dataset, args, last_model_path=None):
-    """
-    Launch evalution.
-
-    Args:
-        model（nn.Layer): A semantic segmentation model.
-        dataset (paddle.io.DataLoader): Used to read and process test datasets.
-        weights_path (string, optional): weights saved local.
-    """
-
-    if last_model_path == None:
-        if args.best_model_path:
-            layer_state_dict = paddle.load(f"{args.best_model_path}")
-            model.set_state_dict(layer_state_dict)
-        else:
-            exit()
-    else:
-        layer_state_dict = paddle.load(last_model_path)
-        model.set_state_dict(layer_state_dict)
-
-    img_ab_concat = args.img_ab_concat
-
-    time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
-   
-
-    img_dir = f"/mnt/data/Results/{args.data_name}/{args.model_name}_{time_flag}_last"
-    if not os.path.isdir(img_dir):
-        os.makedirs(img_dir)
-
-    color_label = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
-
-    logger = load_logger(f"{img_dir}/prediction.log")
-    logger.info(f"test {args.model_name} on {args.data_name}")
-    model = model.to(args.device)
-
-    reader_cost_averager = TimeAverager()
-    batch_cost_averager = TimeAverager()
-    batch_start = time.time()
-    evaluator = ConfuseMatrixMeter(num_class=args.num_classes)
-    with paddle.no_grad():
-        for _, data in enumerate(dataset):
-
-            reader_cost_averager.record(time.time() - batch_start)
-
-            name = data['name']
-            label = data['label'].astype('int64')
-
-            if img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
-                
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img2'].cuda()
-                pred = model(img1, img2)
-
-            if hasattr(model, "predict"):
-                pred = model.predict(pred)
-            else:
-                if (type(pred) == tuple) or (type(pred) == list):
-                    pred = pred[args.pred_idx]
-
-            batch_cost_averager.record(
-                time.time() - batch_start, num_samples=len(label))
-            batch_cost = batch_cost_averager.get_average()
-            reader_cost = reader_cost_averager.get_average()
-
-            reader_cost_averager.reset()
-            batch_cost_averager.reset()
-            batch_start = time.time()
-
-
-            pred = paddle.argmax(pred, axis=1)
-            pred = pred.squeeze().cpu()
-
-            if label.shape[1] > 1:
-                label = paddle.argmax(label, 1)
-            label = label.squeeze()
-            label = np.array(label)
-
-            evaluator.add_batch(pred, label)
-
-            for idx, ipred in enumerate(pred):
-                ipred = ipred.numpy()
-                if (np.max(ipred) != np.min(ipred)):
-                    flag = (label[idx] - ipred)
-                    ipred[flag == -1] = 2
-                    ipred[flag == 1] = 3
-                    img = color_label[ipred]
-                    cv2.imwrite(f"{img_dir}/{name[idx]}", img)
-
-    evaluator.calc()
-    miou = evaluator.Mean_Intersection_over_Union()
-    acc = evaluator.Pixel_Accuracy()
-    class_iou = evaluator.Intersection_over_Union()
-    class_precision = evaluator.Class_Precision()
-    kappa = evaluator.Kappa()
-    recall = evaluator.Mean_Recall()
-    class_dice = evaluator.Dice()
-    macro_f1 = evaluator.Macro_F1()
-    class_recall = evaluator.Recall()
-    # print(batch_cost, reader_cost)
-
-    infor = "[PREDICT] #Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(len(dataset), batch_cost, reader_cost)
-    logger.info(infor)
-    infor = "[METRICS] mIoU: {:.4f}, Acc: {:.4f}, Kappa: {:.4f}, Recall: {:.4f}, Macro_F1: {:.4f}".format(
-            miou, acc, kappa, recall, macro_f1)
-    logger.info(infor)
-
-    logger.info("[METRICS] Class IoU: " + str(np.round(class_iou, 4)))
-    logger.info("[METRICS] Class Precision: " + str(np.round(class_precision, 4)))
-    logger.info("[METRICS] Class Recall: " + str(np.round(class_recall, 4)))
-    logger.info("[METRICS] Class Dice: " + str(np.round(class_dice, 4)))
-
-    if img_ab_concat:
-        images = data['img'].cuda()
-        _, c, h, w = images.shape
-        flop_p = flops(
-        model, [1, c, h, w],
-        custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
-
-        # inputs = paddle.static.InputSpec([None,c, h, w],dtype="float16",name="inputs")
-        # m = paddle.Model(model, inputs)
-        # z = m.summary()
-        # total_params = sum(p.numel() for p in model.parameters())
-        # train_params = sum(p.numel() for p in model.parameters() if p.stop_gradient == False)
-            
-    else:
-        img1 = data['img1'].cuda()
-        _, c, h, w = img1.shape
-        flop_p = flops(
-        model, [1, c, h, w], 2,
-        custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
-    logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))       
-
-    img_files = glob.glob(os.path.join(img_dir, '*.png'))
-    data = []
-    for img_path in img_files:
-        img = cv2.imread(img_path)
-        lab = cls_count(img)
-        # lab = np.argmax(lab, -1)
-        data.append(lab)
-    if data != []:
-        data = np.array(data)
-        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{args.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)
-
-
+def cls_count(label):
+    cls_nums = []
+    color_label = np.array([[0, 0, 0], [255, 255, 255], [0, 128, 0], [0, 0, 128]])
+    for info in color_label:
+        color = info
+        # print("label:\n", label.shape,label)
+        # print("color:\n", color)
+        equality = np.equal(label, color)
+        matrix = np.sum(equality, axis=-1)
+        nums = np.sum(matrix == 3)
+        cls_nums.append(nums)
+    return cls_nums
 

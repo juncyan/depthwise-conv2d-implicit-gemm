@@ -25,8 +25,8 @@ def features_transfer(x):
         x = x.reshape((B, C, wh, wh))
         return x
 
-class CDSam_v2(nn.Layer):
-    def __init__(self, img_size=256,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
+class SCDSam(nn.Layer):
+    def __init__(self, img_size=256,num_cls=7,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
         super().__init__()
         self.sam = MobileSAM(img_size=img_size)
         self.sam.eval()
@@ -34,23 +34,38 @@ class CDSam_v2(nn.Layer):
             load_entire_model(self.sam, sam_checkpoint)
             self.sam.image_encoder.build_abs()
         
-        self.bff1 = BSGFM(128,64)
-        self.bff3 = BSGFM(320,64)
-        self.bff4 = BSGFM(256,64)
-        self.fusion = HSDecoder(64)
+        self.fusion1 = Decoder(img_size)
+        self.fusion2 = Decoder(img_size)
 
-        self.cls1 = layers.ConvBN(64,2,7)
+        self.conv3 = layers.ConvBNReLU(256, 128, 1)
+        self.conv2 = layers.ConvBNReLU(128, 64, 1)
+        self.conv1 = layers.ConvBNReLU(128+64, 64, 1)
+
+        self.cls = layers.ConvBN(64,2,7)
+        self.scls1 = layers.ConvBN(64,num_cls,7)
+        self.scls2 = layers.ConvBN(64,num_cls,7)
 
     def forward(self, x1, x2=None):
         if x2 is None:
             x2 = x1[:,3:,:,:]
             x1 = x1[:,:3,:,:]
         
-        f1, f3, f4 = self.extractor(x1, x2)
-        f = self.fusion(f1, f3, f4)
-        f = self.cls1(f)
+        b1, b, p1, p = self.extractor(x1, x2)
+        tb1, tb2, tb3 = self.fusion1(b1, b)
+        tp1, tp2, tp3 = self.fusion1(p1, p)
+        
+        t3 = paddle.concat([tb3, tp3], axis=1)
+        t3 = self.conv3(t3)
+        t2 = paddle.concat([tb2, tp2], axis=1)
+        t2 = self.conv2(t2)
+        t = paddle.concat([t3, t2], axis=1)
+        t = F.interpolate(t, scale_factor=8, mode='bilinear', align_corners=True)
+        t = self.conv1(t)
 
-        return f
+        t = self.cls(t)
+        outa = self.scls1(tb1)
+        outb = self.scls2(tp1)
+        return t, outa, outb
     
     def feature_extractor(self, x):
         [f1, f2,f3,f4], f = self.sam.image_encoder.extract_features(x)
@@ -59,19 +74,14 @@ class CDSam_v2(nn.Layer):
     def extractor(self, x1, x2):
         b1, b2, b3, _, b = self.feature_extractor(x1)
         p1, p2, p3, _, p = self.feature_extractor(x2)
-        # print(b1.shape, b2.shape, b3.shape, b4.shape)
+        # print(b1.shape, b2.shape, b3.shape)
+        b1 = features_transfer(b1)
+        # b3 = features_transfer(b3)
 
-        f1 = self.bff1(b1, p1)
-        f3 = self.bff3(b3, p3)
-        b4 = paddle.reshape(b, [b.shape[0], b.shape[1], -1])
-        b4 = paddle.transpose(b4, perm=[0, 2, 1])
-        p4 = paddle.reshape(p, [b.shape[0], b.shape[1], -1])
-        p4 = paddle.transpose(p4, perm=[0, 2, 1])
-        f4 = self.bff4(b4, p4)
-        f1 = features_transfer(f1)
-        f3 = features_transfer(f3)
-        f4 = features_transfer(f4)
-        return f1, f3, f4
+        p1 = features_transfer(p1)
+        # p3 = features_transfer(p3)
+
+        return b1, b, p1, p
     
     @staticmethod
     def predict(pred):
@@ -85,79 +95,35 @@ class CDSam_v2(nn.Layer):
         loss = l1 + 0.75*l2
         return loss
 
-class BSGFM(nn.Layer):
-    #Bitemporal Spatial Gate Fusion Module
-    def __init__(self, dims, out_channels=64):
-        super().__init__()
-        self.cov1 = nn.Conv1D(2*dims, out_channels,3,padding=1,data_format='NLC')
-        self.bn1 = nn.BatchNorm1D(out_channels, data_format='NLC')
-        self.mlp1 = MLPBlock(out_channels, out_channels*2)
 
-        self.lamda = self.create_parameter(shape=[1], default_initializer=nn.initializer.Constant(1.0), dtype='float16')
-        self.fc = nn.Linear(2,1)
-        self.mlp = MLPBlock(out_channels, out_channels)
-
-    def forward(self, x1, x2):
-        x = paddle.concat([x1, x2], -1)
-        x = self.cov1(x)
-        x = self.bn1(x)
-        x = self.mlp1(x)
-
-        xa = F.adaptive_avg_pool1d(x, 1)
-        xm = F.adaptive_max_pool1d(x, 1)
-        xt = paddle.concat([xa, xm], -1)
-        xt = self.fc(xt)
-        xt = F.relu(xt)
-        y = x * xt
-        y = y* self.lamda + x
-        y = self.mlp(y)
-        y = F.relu(y)
-        return y
-
-
-class HSDecoder(nn.Layer):
+class Decoder(nn.Layer):
     """ spatial channel attention module"""
-    def __init__(self, in_channels=64, out_dims=64):
+    def __init__(self, img_size):
         super().__init__()
-        dims = 64 # 2*in_channels
-        self.st1conv1 = layers.ConvBNReLU(dims, in_channels, 1)
-        self.st1conv2 = EFC(in_channels)
-        self.rff = RandFourierFeature(in_channels, in_channels)
+        self.img_size = [img_size, img_size]
+        self.st1conv1 = layers.ConvBNReLU(256, 128, 1)
+        self.st1conv2 = EFC(128)
 
-        self.st2conv1 = layers.ConvBNReLU(in_channels, in_channels, 1)
-        self.st2conv2 = EFC(in_channels)
+        self.st2conv1 = layers.ConvBNReLU(128, 64, 1)
+        self.st2conv2 = EFC(64)
         
-        self.st3conv1 = layers.ConvBNReLU(in_channels, in_channels, 1)
-        self.st3conv2 = EFC(in_channels)
-        
-        self.conv1 = layers.ConvBNReLU(3*in_channels, in_channels, 1)
-        self.conv2 = layers.ConvBNReLU(in_channels, in_channels, 3)
-        self.deconv6 = layers.ConvBNReLU(in_channels,out_dims,1)
+        self.conv2 = layers.ConvBNReLU(64, 64, 3)
+        self.deconv6 = layers.ConvBNReLU(64,64,1)
 
-    def forward(self, x1, x2, x3):
+    def forward(self, x2, x3):
         f3 = self.st1conv1(x3)
-        fr3 = self.rff(f3)
-        f3 = f3 + fr3
         f3 = self.st1conv2(f3)
-
+        f3 = F.interpolate(f3, x2.shape[-2:], mode='bilinear', align_corners=True)
+        
         f2 = x2 + f3
         f2 = self.st2conv1(f2)
         f2 = self.st2conv2(f2)
 
-        f3 = F.interpolate(f3, x1.shape[-2:], mode='bilinear', align_corners=True)
-        f2 = F.interpolate(f2, x1.shape[-2:], mode='bilinear', align_corners=True)
-        # print(x1.shape, f2.shape, f3.shape)
-        f1 = x1 + f2 + f3
-        f1 = self.st3conv1(f1)
-        f1 = self.st3conv2(f1)
-
-        f = paddle.concat([f1, f2, f3], 1)
-        f = self.conv1(f)
-        fd = self.conv2(f)
-        f = f + fd
-        f = F.interpolate(f, scale_factor=8, mode='bilinear', align_corners=True)
+        f = F.interpolate(f2, size=self.img_size, mode='bilinear', align_corners=True)
+        
+        f = self.conv2(f)
         f = self.deconv6(f)
-        return f
+        return f, f2, f3
 
 
 class EFC(nn.Layer):

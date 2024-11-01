@@ -66,9 +66,9 @@ class SCDReader(Dataset):
         sst1 = paddle.to_tensor(sst1)
         sst2 = paddle.to_tensor(sst2)
 
-        gt1 = paddle.to_tensor(gt1)
-        gt2 = paddle.to_tensor(gt2)
-        gtcd = paddle.to_tensor(gtcd)
+        gt1 = paddle.to_tensor(gt1.astype(np.int64))
+        gt2 = paddle.to_tensor(gt2.astype(np.int64))
+        gtcd = paddle.to_tensor(gtcd.astype(np.float32))
         # print(sst1.shape, sst2.shape, gt1.shape, gt2.shape, gtcd.shape)
         return sst1, sst2, gt1, gt2, gtcd, self.file_name[index]
 

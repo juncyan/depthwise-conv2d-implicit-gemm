@@ -24,14 +24,14 @@ def loss_lovasz(cd_map, out1, out2, label1, label2, label_cd):
     lovasz_loss_clf_t2 = LovaszSoftmaxLoss(ignore_index=255)(out2, label2)
 
     # Mask for similarity loss (label == 255)
-    similarity_mask = (label1 == 0).unsqueeze(1).expand_as(out1)
+    similarity_mask = (label_cd != 0).unsqueeze(1).expand_as(out1)
 
-    # Similarity loss calculation (e.g., MSE)
+    # # Similarity loss calculation (e.g., MSE)
     similarity_loss = F.mse_loss(F.softmax(out1, axis=1) * similarity_mask, F.softmax(out2, axis=1) * similarity_mask, reduction='mean')
 
     
     final_loss = ce_loss_cd + 0.5 * (ce_loss_clf_t1 + ce_loss_clf_t2 + 0.5 * similarity_loss) + 0.75 * (lovasz_loss_cd + 0.5 * (lovasz_loss_clf_t1 + lovasz_loss_clf_t2))
-    
+    # final_loss = ce_loss_cd + ce_loss_clf_t1 + ce_loss_clf_t2  + 0.75 * (lovasz_loss_cd + lovasz_loss_clf_t1 + lovasz_loss_clf_t2)
     return final_loss
 
 
@@ -87,8 +87,14 @@ def flatten_probas(probas, labels, ignore=None):
     vlabels = labels[valid]
     return vprobas, vlabels
 
-    
+class CrossEntropyLoss2d(nn.Layer):
+    def __init__(self, weight=None, ignore_index=-1):
+        super(CrossEntropyLoss2d, self).__init__()
+        self.nll_loss = nn.NLLLoss(weight=weight, ignore_index=ignore_index,
+                                   reduction='mean')
 
+    def forward(self, inputs, targets):
+        return self.nll_loss(F.log_softmax(inputs, axis=1), targets)
 
 def CrossEntropy2d(input, target, weight=None, size_average=False):
     # input:(n, c, h, w) target:(n, h, w)
@@ -118,14 +124,14 @@ def weighted_BCE(output, target, weight_pos=None, weight_neg=None):
     return paddle.neg(paddle.mean(loss))
 
 def weighted_BCE_logits(logit_pixel, truth_pixel, weight_pos=0.25, weight_neg=0.75):
-    logit = logit_pixel.view(-1)
-    truth = truth_pixel.view(-1)
+    logit = logit_pixel.reshape([-1])
+    truth = truth_pixel.reshape([-1])
     assert(logit.shape==truth.shape)
 
     loss = F.binary_cross_entropy_with_logits(logit, truth, reduction='none')
     
-    pos = (truth>0.5).float()
-    neg = (truth<0.5).float()
+    pos = paddle.cast(truth>=0.5, paddle.float32)
+    neg = paddle.cast(truth<0.5, paddle.float32)
     pos_num = pos.sum().item() + 1e-12
     neg_num = neg.sum().item() + 1e-12
     loss = (weight_pos*pos*loss/pos_num + weight_neg*neg*loss/neg_num).sum()
@@ -192,17 +198,19 @@ class ChangeSimilarity(nn.Layer):
         self.loss_f = nn.CosineEmbeddingLoss(margin=0., reduction=reduction)
         
     def forward(self, x1, x2, label_change):
-        b,c,h,w = x1.size()
-        x1 = F.softmax(x1, dim=1)
-        x2 = F.softmax(x2, dim=1)
-        x1 = x1.permute(0,2,3,1)
-        x2 = x2.permute(0,2,3,1)
+        
+        b,c,h,w = x1.shape
+        x1 = F.softmax(x1, axis=1)
+        x2 = F.softmax(x2, axis=1)
+        x1 = x1.transpose([0,2,3,1])
+        x2 = x2.transpose([0,2,3,1])
         x1 = paddle.reshape(x1,[b*h*w,c])
         x2 = paddle.reshape(x2,[b*h*w,c])
         
-        label_unchange = ~label_change.bool()
-        target = label_unchange.float()
-        target = target - label_change.float()
+        labelmask = paddle.cast(label_change, dtype="bool")
+        label_unchange = ~labelmask
+        target = paddle.cast(label_unchange, dtype="float32")
+        target = target - label_change
         target = paddle.reshape(target,[b*h*w])
         
         loss = self.loss_f(x1, x2, target)

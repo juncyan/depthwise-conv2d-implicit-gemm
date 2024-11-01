@@ -18,6 +18,7 @@ import numpy as np
 import time
 import paddle
 import paddle.nn.functional as F
+import paddle.tensor
 import pandas as pd
 from tqdm import tqdm
 from paddleseg.utils import TimeAverager
@@ -56,17 +57,18 @@ def evaluate(obj=None):
             batch_cost_averager.reset()
             batch_start = time.time()
 
-            change_mask = paddle.argmax(cd, axis=1)
-
+            change_mask = F.sigmoid(cd).cpu().detach()>0.5 #paddle.argmax(cd, axis=1)
             sem1 = paddle.argmax(sem1, axis=1)
             sem2 = paddle.argmax(sem2, axis=1)
-            sem1 = (sem1*change_mask.squeeze().long()).cpu().numpy()
-            sem2 = (sem2*change_mask.squeeze().long()).cpu().numpy()
 
-            evaluator.add_batch(sem1.cpu().numpy(), gt1)
-            evaluator.add_batch(sem2.cpu().numpy(), gt2)
+            sem1 = (sem1*change_mask.squeeze()).cpu().numpy()
+            sem2 = (sem2*change_mask.squeeze()).cpu().numpy()
+            
+            evaluator.add_batch(sem1, gt1)
+            evaluator.add_batch(sem2, gt2)
 
     metrics = evaluator.Get_Metric()
+    evaluator.reset()
 
     miou = metrics['miou']
 

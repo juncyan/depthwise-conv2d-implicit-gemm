@@ -24,10 +24,9 @@ import paddle
 import paddle.nn.functional as F
 import paddle.optimizer
 from tqdm import tqdm
-from .loss import loss_lovasz
+from .loss import loss_lovasz, CrossEntropyLoss2d, weighted_BCE_logits, ChangeSimilarity
 from .val import evaluate
 from .predict import test
-
 
 def train(obj):
     """
@@ -53,13 +52,16 @@ def train(obj):
 
     batch_start = time.time()
 
+    criterion = CrossEntropyLoss2d(ignore_index=0)
+    criterion_sc = ChangeSimilarity()
+
     for _epoch in range(obj.args.iters):
         avg_loss_list = []
         epoch = _epoch + 1
         model.train()
 
         for img1, img2, gt1, gt2, gt,_ in tqdm(obj.train_loader):
-          
+            # paddle.Tensor().type(paddle.float32)
             img1 = img1.cuda()
             img2 = img2.cuda()
             gt1 = gt1.cuda()
@@ -68,7 +70,12 @@ def train(obj):
 
             cd, sem1, sem2 = model(img1, img2)
 
-            loss = loss_lovasz(cd, sem1, sem2, gt1, gt2, gt)  
+            # loss = loss_lovasz(cd, sem1, sem2, gt1, gt2, gt)  
+
+            loss_seg = criterion(sem1, gt1) * 0.5 +  criterion(sem2, gt2) * 0.5     
+            loss_bn = weighted_BCE_logits(cd, gt)
+            loss_sc = criterion_sc(sem1[:,1:], sem2[:,1:], gt)
+            loss = loss_seg + loss_bn + loss_sc
            
             loss.backward()
             optimizer.step()
@@ -109,7 +116,7 @@ def train(obj):
         if obj.logger !=  None:
             obj.logger.info("[TRAIN] best iter {}, max mIoU {:.4f}".format(best_model_iter, best_mean_iou))
         batch_start = time.time()
-    # test(obj)
+    test(obj)
     logging.shutdown()
     
     # Sleep for a second to let dataloader release resources.

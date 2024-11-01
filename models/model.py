@@ -26,7 +26,7 @@ def features_transfer(x):
         return x
 
 class SCDSam(nn.Layer):
-    def __init__(self, img_size=256,num_cls=7,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
+    def __init__(self, img_size=256,num_seg=7,num_cd=2,sam_checkpoint=r"/home/jq/Code/weights/vit_t.pdparams"):
         super().__init__()
         self.sam = MobileSAM(img_size=img_size)
         self.sam.eval()
@@ -36,14 +36,15 @@ class SCDSam(nn.Layer):
         
         self.fusion1 = Decoder(img_size)
         self.fusion2 = Decoder(img_size)
+        self.cdfusion = Decoder(img_size)
 
-        self.conv3 = layers.ConvBNReLU(256, 128, 1)
-        self.conv2 = layers.ConvBNReLU(128, 64, 1)
-        self.conv1 = layers.ConvBNReLU(128+64, 64, 1)
+        self.conv3 = layers.ConvBNPReLU(512,256,1)
+        self.conv2 = layers.ConvBNReLU(256, 128, 1)
+        # self.conv1 = layers.ConvBNReLU(128+64, 64, 1)
 
-        self.cls = layers.ConvBN(64,2,7)
-        self.scls1 = layers.ConvBN(64,num_cls,7)
-        self.scls2 = layers.ConvBN(64,num_cls,7)
+        self.cls = layers.ConvBN(64,1,7)
+        self.scls1 = layers.ConvBN(64,num_seg,7)
+        self.scls2 = layers.ConvBN(64,num_seg,7)
 
     def forward(self, x1, x2=None):
         if x2 is None:
@@ -51,16 +52,15 @@ class SCDSam(nn.Layer):
             x1 = x1[:,:3,:,:]
         
         b1, b, p1, p = self.extractor(x1, x2)
-        tb1, tb2, tb3 = self.fusion1(b1, b)
-        tp1, tp2, tp3 = self.fusion1(p1, p)
+        tb1 = self.fusion1(b1, b)
+        tp1 = self.fusion1(p1, p)
         
-        t3 = paddle.concat([tb3, tp3], axis=1)
+        t3 = paddle.concat([p, b], axis=1)
         t3 = self.conv3(t3)
-        t2 = paddle.concat([tb2, tp2], axis=1)
+        t2 = paddle.concat([b1, p1], axis=1)
         t2 = self.conv2(t2)
-        t = paddle.concat([t3, t2], axis=1)
-        t = F.interpolate(t, scale_factor=8, mode='bilinear', align_corners=True)
-        t = self.conv1(t)
+        
+        t= self.cdfusion(t2,t3)
 
         t = self.cls(t)
         outa = self.scls1(tb1)
@@ -84,16 +84,17 @@ class SCDSam(nn.Layer):
         return b1, b, p1, p
     
     @staticmethod
-    def predict(pred):
-        return pred
+    def predict(preds):
+        out_change, outputs_A, outputs_B = preds
+        outputs_A = outputs_A.cpu().detach()
+        outputs_B = outputs_B.cpu().detach()
+        change_mask = F.sigmoid(out_change).cpu().detach()>0.5
+        preds_A = paddle.argmax(outputs_A, dim=1)
+        preds_B = paddle.argmax(outputs_B, dim=1)
+        preds_A = (preds_A*change_mask.squeeze()).numpy()
+        preds_B = (preds_B*change_mask.squeeze()).numpy()
+        return preds_A, preds_B
     
-    @staticmethod
-    def loss(pred, label):  
-        l1 = BCELoss()(pred, label)
-        label = paddle.argmax(label, axis=1)
-        l2 = LovaszSoftmaxLoss()(pred, label)
-        loss = l1 + 0.75*l2
-        return loss
 
 
 class Decoder(nn.Layer):
@@ -103,9 +104,11 @@ class Decoder(nn.Layer):
         self.img_size = [img_size, img_size]
         self.st1conv1 = layers.ConvBNReLU(256, 128, 1)
         self.st1conv2 = EFC(128)
+        self.st1conv3 = layers.ConvBNReLU(128, 128, 3)
 
         self.st2conv1 = layers.ConvBNReLU(128, 64, 1)
         self.st2conv2 = EFC(64)
+        self.st2conv3 = layers.ConvBNReLU(64, 64, 3)
         
         self.conv2 = layers.ConvBNReLU(64, 64, 3)
         self.deconv6 = layers.ConvBNReLU(64,64,1)
@@ -114,16 +117,18 @@ class Decoder(nn.Layer):
         f3 = self.st1conv1(x3)
         f3 = self.st1conv2(f3)
         f3 = F.interpolate(f3, x2.shape[-2:], mode='bilinear', align_corners=True)
-        
+        f3 = self.st1conv3(f3)
+
         f2 = x2 + f3
         f2 = self.st2conv1(f2)
         f2 = self.st2conv2(f2)
-
-        f = F.interpolate(f2, size=self.img_size, mode='bilinear', align_corners=True)
+        f2 = F.interpolate(f2, size=self.img_size, mode='bilinear', align_corners=True)
+        f2 = self.st2conv3(f2)
         
-        f = self.conv2(f)
+        f = self.conv2(f2)
         f = self.deconv6(f)
-        return f, f2, f3
+        f = f + f2
+        return f
 
 
 class EFC(nn.Layer):

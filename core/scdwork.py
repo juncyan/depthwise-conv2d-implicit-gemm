@@ -31,14 +31,14 @@ class Work():
 
     def dataload(self, datasetlist=['train', 'val', 'test']):
         train_data = SCDReader(self.dataset_path, datasetlist[0])
-        # val_data = SCDReader(self.dataset_path, datasetlist[2])
+        val_data = SCDReader(self.dataset_path, datasetlist[2])
         test_data = SCDReader(self.dataset_path, datasetlist[2])
         self.label_info = test_data.label_info
 
         batch_sampler = paddle.io.BatchSampler(train_data, batch_size=self.args.batch_size, shuffle=True, drop_last=True)
 
         self.traindata_num = train_data.__len__()
-        # self.val_num = val_data.__len__()
+        self.val_num = val_data.__len__()
         self.test_num = test_data.__len__()
         self.train_loader = paddle.io.DataLoader(
             train_data,
@@ -47,18 +47,18 @@ class Work():
             return_list=True,
             worker_init_fn=worker_init_fn, )
 
-        # val_batch_sampler = paddle.io.BatchSampler(
-        #     val_data, batch_size=self.args.batch_size, shuffle=False, drop_last=False)
+        val_batch_sampler = paddle.io.BatchSampler(
+            val_data, batch_size=self.args.batch_size, shuffle=False, drop_last=False)
 
-        # self.val_loader = paddle.io.DataLoader(
-        #     val_data,
-        #     batch_sampler=val_batch_sampler,
-        #     num_workers=self.args.num_workers,
-        #     return_list=True,
-        #     worker_init_fn=worker_init_fn, )
+        self.val_loader = paddle.io.DataLoader(
+            val_data,
+            batch_sampler=val_batch_sampler,
+            num_workers=self.args.num_workers,
+            return_list=True,
+            worker_init_fn=worker_init_fn, )
 
         test_batch_sampler = paddle.io.BatchSampler(
-            test_data, batch_size=self.args.batch_size, shuffle=False, drop_last=False)
+            test_data, batch_size=4, shuffle=False, drop_last=False)
 
         self.test_loader = paddle.io.DataLoader(
             test_data,

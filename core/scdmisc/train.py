@@ -69,14 +69,13 @@ def train(obj):
             gt = gt.cuda()
 
             cd, sem1, sem2 = model(img1, img2)
-
             # loss = loss_lovasz(cd, sem1, sem2, gt1, gt2, gt)  
 
             loss_seg = criterion(sem1, gt1) * 0.5 +  criterion(sem2, gt2) * 0.5     
             loss_bn = weighted_BCE_logits(cd, gt)
             loss_sc = criterion_sc(sem1[:,1:], sem2[:,1:], gt)
             loss = loss_seg + loss_bn + loss_sc
-           
+            
             loss.backward()
             optimizer.step()
             lr = optimizer.get_lr()
@@ -91,11 +90,12 @@ def train(obj):
 
             model.clear_gradients()
             
-            # 
             avg_loss = np.array(loss.cpu())
             avg_loss_list.append(avg_loss)
+
         batch_cost_averager = time.time() - batch_start
         avg_loss = np.mean(avg_loss_list)
+
 
         if obj.logger != None:
             obj.logger.info(

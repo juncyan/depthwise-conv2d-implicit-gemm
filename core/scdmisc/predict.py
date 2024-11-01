@@ -44,7 +44,6 @@ def test(obj):
 
 
     assert obj != None, "obj is None, please check!"
-
     model = obj.model
     model.eval()
     if obj.best_model_path:
@@ -89,26 +88,30 @@ def test(obj):
 
 
             change_mask = F.sigmoid(cd).cpu().detach()>0.5 #paddle.argmax(cd, axis=1)
+            change_mask = change_mask.squeeze()
+            
             sem1 = paddle.argmax(sem1, axis=1)
             sem2 = paddle.argmax(sem2, axis=1)
 
-            sem1 = (sem1*change_mask.squeeze()).cpu().numpy()
-            sem2 = (sem2*change_mask.squeeze()).cpu().numpy()
+            sem1 = (sem1*change_mask).cpu().numpy()
+            sem2 = (sem2*change_mask).cpu().numpy()
             
             evaluator.add_batch(sem1, gt1)
             evaluator.add_batch(sem2, gt2)
 
-            for idx, is1, is2, cdm in enumerate(zip(sem1, sem2, change_mask)):
-                cdm = cdm.numpy()
-                if (np.max(cd) != np.min(cdm)):
-                    flag_local = (gt[idx] - cdm)
-                    cdm[flag_local == -1] = 2
-                    cdm[flag_local == 1] = 3
-                    cv2.imwrite(f"{img_dir}/{file[idx]}", cdm)
-                    fa = file.replace(".", "_A.")
-                    fb = file.replace(".", "_B.")
-                    cv2.imwrite(f"{img_dir}/{fa}", is1)
-                    cv2.imwrite(f"{img_dir}/{fb}", is2)
+            for idx, (is1, is2, cdm) in enumerate(zip(sem1, sem2, change_mask)):
+                cdm = np.array(cdm, np.int8)
+                if np.max(cdm) == np.min(cdm):
+                    continue
+                flag_local = (gt[idx] - cdm)
+                cdm[flag_local == -1] = 2
+                cdm[flag_local == 1] = 3
+                name = file[idx]
+                cv2.imwrite(f"{img_dir}/{name}", cdm)
+                fa = name.replace(".", "_A.")
+                fb = name.replace(".", "_B.")
+                cv2.imwrite(f"{img_dir}/{fa}", is1)
+                cv2.imwrite(f"{img_dir}/{fb}", is2)
 
     evaluator.get_hist(save_path=f"{img_dir}/hist.csv")
 
@@ -129,28 +132,25 @@ def test(obj):
     custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
     logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))  
 
-    img_files = glob.glob(os.path.join(img_dir, '*.png'))
-    data = []
-    for img_path in img_files:
-        img = io.imread(img_path)
-        lab = cls_count(img)
-        # lab = np.argmax(lab, -1)
-        data.append(lab)
-    if data != []:
-        data = np.array(data)
-        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{obj.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)     
+    # img_files = glob.glob(os.path.join(img_dir, '*.png'))
+    # data = []
+    # for img_path in img_files:
+    #     img = io.imread(img_path)
+    #     lab = cls_count(img)
+    #     # lab = np.argmax(lab, -1)
+    #     data.append(lab)
+    # if data != []:
+    #     data = np.array(data)
+    #     pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{obj.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)     
 
 
-def cls_count(label):
+def cls_count(label, num_classes):
     cls_nums = []
-    color_label = np.array([[0, 0, 0], [255, 255, 255], [0, 128, 0], [0, 0, 128]])
-    for info in color_label:
-        color = info
-        # print("label:\n", label.shape,label)
-        # print("color:\n", color)
-        equality = np.equal(label, color)
-        matrix = np.sum(equality, axis=-1)
-        nums = np.sum(matrix == 3)
+    for k in range(num_classes):
+       
+        equality = np.equal(label, k)
+        nums = np.sum(equality)
+        # nums = np.sum(matrix == 3)
         cls_nums.append(nums)
     return cls_nums
 

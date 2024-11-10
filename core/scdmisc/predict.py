@@ -32,7 +32,7 @@ from core.cdmisc.logger import load_logger
 from core.cdmisc.count_params import flops
 
 
-def test(obj):
+def test(model, test_loader, args):
     """
     Launch evalution.
 
@@ -43,34 +43,34 @@ def test(obj):
     """
 
 
-    assert obj != None, "obj is None, please check!"
-    model = obj.model
+    assert args != None, "args is None, please check!"
+    
     model.eval()
-    if obj.best_model_path:
-        layer_state_dict = paddle.load(f"{obj.best_model_path}")
+    if args.best_model_path:
+        layer_state_dict = paddle.load(f"{args.best_model_path}")
         model.set_state_dict(layer_state_dict)
     else:
         exit()
 
     time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
 
-    img_dir = f"/mnt/data/Results/{obj.args.dataset}/{obj.model_name}_{time_flag}"
+    img_dir = f"/mnt/data/Results/{args.dataset}/{args.model_name}_{time_flag}"
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
 
-    color_label = obj.label_info
+    color_label = args.label_info
 
     logger = load_logger(f"{img_dir}/prediction.log")
-    logger.info(f"test {obj.args.dataset} on {obj.model_name}")
+    logger.info(f"test {args.dataset} on {args.model_name}")
 
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     model.eval()
-    evaluator = Metric_SCD(num_class=obj.args.num_classes)
+    evaluator = Metric_SCD(num_class=args.num_classes)
 
     with paddle.no_grad():
-        for img1, img2, gt1, gt2, gt, file in tqdm(obj.test_loader):
+        for img1, img2, gt1, gt2, gt, file in tqdm(args.test_loader):
             reader_cost_averager.record(time.time() - batch_start)
 
             img1 = img1.cuda()
@@ -118,7 +118,7 @@ def test(obj):
     metrics = evaluator.Get_Metric()
     evaluator.reset()
 
-    infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(obj.test_num, batch_cost, reader_cost)
+    infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(args.test_num, batch_cost, reader_cost)
     logger.info(infor)
     logger.info("[METRICS] MIoU:{:.4}, Kappa:{:.4}, F1:{:.4}, Sek:{:.4}".format(
             metrics['miou'],metrics['kappa'],metrics['f1'],metrics['sek']))
@@ -141,7 +141,7 @@ def test(obj):
     #     data.append(lab)
     # if data != []:
     #     data = np.array(data)
-    #     pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{obj.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)     
+    #     pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{args.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)     
 
 
 def cls_count(label, num_classes):

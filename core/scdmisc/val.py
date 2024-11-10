@@ -27,21 +27,20 @@ from .metric import Metric_SCD
 np.set_printoptions(suppress=True)
 
 
-def evaluate(obj=None):
+def evaluate(model, val_loader, args):
     """
     Launch evalution.
     """
-    assert obj != None, "obj is None, please check!"
-    model = obj.model
+    assert args != None, "args is None, please check!"
     
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     model.eval()
-    evaluator = Metric_SCD(num_class=obj.args.num_classes)
+    evaluator = Metric_SCD(num_class=args.num_classes)
 
     with paddle.no_grad():
-        for img1, img2, gt1, gt2, gt,_ in tqdm(obj.val_loader):
+        for img1, img2, gt1, gt2, gt,_ in tqdm(val_loader):
             reader_cost_averager.record(time.time() - batch_start)
 
             img1 = img1.cuda()
@@ -73,19 +72,19 @@ def evaluate(obj=None):
 
     miou = metrics['miou']
 
-    if obj.logger != None:
-        infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(obj.val_num, batch_cost, reader_cost)
-        obj.logger.info(infor)
-        obj.logger.info("[METRICS] MIoU:{:.4}, Kappa:{:.4}, F1:{:.4}, Sek:{:.4}".format(
+    if args.logger != None:
+        infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(args.val_num, batch_cost, reader_cost)
+        args.logger.info(infor)
+        args.logger.info("[METRICS] MIoU:{:.4}, Kappa:{:.4}, F1:{:.4}, Sek:{:.4}".format(
             miou,metrics['kappa'],metrics['f1'],metrics['sek']))
-        obj.logger.info("[METRICS] PA:{:.4}, Prec.:{:.4}, Recall:{:.4}".format(
+        args.logger.info("[METRICS] PA:{:.4}, Prec.:{:.4}, Recall:{:.4}".format(
             metrics['pa'],metrics['prec'],metrics['recall']))
         
     
     d = pd.DataFrame([metrics])
-    if os.path.exists(obj.metric_path):
-        d.to_csv(obj.metric_path,mode='a', index=False, header=False,float_format="%.4f")
+    if os.path.exists(args.metric_path):
+        d.to_csv(args.metric_path,mode='a', index=False, header=False,float_format="%.4f")
     else:
-        d.to_csv(obj.metric_path, index=False,float_format="%.4f")
+        d.to_csv(args.metric_path, index=False,float_format="%.4f")
         
     return miou

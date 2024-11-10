@@ -16,11 +16,9 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 from cd_models.replkcd import CD_RLKNet
 
-from models.dhsamcd import DHSamCD, DHSamCD_v2, DHSamCD_v5, DHSamCD_v4
-from models.model import CDSam_v2
 from models.samcd import SamH_CD
 
-from core.work import Work
+from core.bcdwork import Work
 
 
 # dataset_name = "LEVIR_CD"

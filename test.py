@@ -1,19 +1,18 @@
 import paddle
-import numpy as np
-import random
-import shutil
-import glob
-import os
-import cv2
-from tqdm import tqdm
-from models.model import SCDSam
-from skimage import io
+from models.replk import RepConv
 
-# x = paddle.rand((1, 6, 512, 512)).cuda()
-# m = SCDSam(img_size=512).to('gpu')
-# y = m(x)
-    
-x1 = [1,2,3]
 
-for idx, (x,y,z) in enumerate(zip(x1, x1, x1)):
-    print(idx, x,y,z)
+
+x = paddle.randn([1, 3, 256, 256]).cuda()
+m = RepConv(3).to('gpu:0')
+
+y1 = m(x)
+print(y1)
+paddle.save(m.state_dict(), 'repconv.pdparams')
+
+
+m.load_dict(paddle.load('repconv.pdparams'))
+m.eval()
+y2 = m(x)
+
+print(y2)

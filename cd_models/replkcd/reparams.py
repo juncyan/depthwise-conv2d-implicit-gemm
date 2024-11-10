@@ -107,17 +107,17 @@ class Reparams(nn.Layer):
         return paddle.concat(slices, axis=1)
     
     def get_equivalent_kernel_bias(self):
-        return 0, None
+        return 0, 0
     
     def eval(self):
-        kernel = self.get_equivalent_kernel_bias()
+        kernel, bias = self.get_equivalent_kernel_bias()
         if not hasattr(self, 'repc'):
-            self.repc = nn.Conv2D(self.in_channels, self.in_channels, self.lk, stride=self.stride, padding=self.lk//2, groups=self.in_channels, bias_attr=False)
+            self.repc = nn.Conv2D(self.in_channels, self.in_channels, self.lk, stride=self.stride, padding=self.lk//2, groups=self.in_channels, bias_attr=bias is not None)
         self.training = False
         self.repc.weight.set_value(kernel)
         
-        # if bias is not None:
-        #     self.repc.bias.set_value(bias)
+        if bias is not None:
+            self.repc.bias.set_value(bias)
 
         for layer in self.sublayers():
             layer.eval()

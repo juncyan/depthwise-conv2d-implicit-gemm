@@ -28,7 +28,7 @@ from .loss import loss_lovasz, CrossEntropyLoss2d, weighted_BCE_logits, ChangeSi
 from .val import evaluate
 from .predict import test
 
-def train(obj):
+def train(model, train_loader, val_loader, test_loader, args):
     """
     Launch training.
 
@@ -38,14 +38,13 @@ def train(obj):
         val_dataset (paddle.io.Dataset, optional): Used to read and process validation datasets.
         optimizer (paddle.optimizer.Optimizer): The optimizer.
     """
-    model = obj.model
-    # paddle.optimizer.lr.PolynomialDecay(obj.args.lr, obj.args.iters)
-    lr = paddle.optimizer.lr.CosineAnnealingDecay(obj.args.lr, T_max=(obj.args.iters // 3), last_epoch=0.5)  # 余弦衰减
-    optimizer = paddle.optimizer.Adam(lr, parameters=model.parameters()) 
+    # paddle.optimizer.lr.PolynomialDecay(args.lr, args.iters)
+    lr = paddle.optimizer.lr.CosineAnnealingDecay(args.lr, T_max=(args.iters // 3), last_epoch=0.5)  # 余弦衰减
+    optimizer = paddle.optimizer.AdamW(lr, parameters=model.parameters()) 
 
     model.train()
-    if obj.logger != None:
-        obj.logger.info("start train")
+    if args.logger != None:
+        args.logger.info("start train")
 
     best_mean_iou = -1.0
     best_model_iter = -1
@@ -55,12 +54,12 @@ def train(obj):
     criterion = CrossEntropyLoss2d(ignore_index=0)
     criterion_sc = ChangeSimilarity()
 
-    for _epoch in range(obj.args.iters):
+    for _epoch in range(args.iters):
         avg_loss_list = []
         epoch = _epoch + 1
         model.train()
 
-        for img1, img2, gt1, gt2, gt,_ in tqdm(obj.train_loader):
+        for img1, img2, gt1, gt2, gt,_ in tqdm(train_loader):
             # paddle.Tensor().type(paddle.float32)
             img1 = img1.cuda()
             img2 = img2.cuda()
@@ -97,26 +96,26 @@ def train(obj):
         avg_loss = np.mean(avg_loss_list)
 
 
-        if obj.logger != None:
-            obj.logger.info(
+        if args.logger != None:
+            args.logger.info(
                 "[TRAIN] iter: {}/{}, loss: {:.4f}, lr: {:.6}, batch_cost: {:.2f}, ips: {:.4f} samples/sec".format(
-                    epoch, obj.args.iters, avg_loss, lr, batch_cost_averager, batch_cost_averager / obj.traindata_num))
+                    epoch, args.iters, avg_loss, lr, batch_cost_averager, batch_cost_averager / args.traindata_num))
 
-        if epoch == obj.args.iters:
+        if epoch == args.iters:
             paddle.save(model.state_dict(),
-                        os.path.join(obj.save_dir, f'last_model.pdparams'))
-        mean_iou = evaluate(obj)
+                        os.path.join(args.save_dir, f'last_model.pdparams'))
+        mean_iou = evaluate(model, val_loader, args)
 
         if mean_iou > best_mean_iou:
             # predict(model, test_data_loader, args)
             best_mean_iou = mean_iou
             best_model_iter = epoch
-            paddle.save(model.state_dict(), obj.best_model_path)
+            paddle.save(model.state_dict(), args.best_model_path)
 
-        if obj.logger !=  None:
-            obj.logger.info("[TRAIN] best iter {}, max mIoU {:.4f}".format(best_model_iter, best_mean_iou))
+        if args.logger !=  None:
+            args.logger.info("[TRAIN] best iter {}, max mIoU {:.4f}".format(best_model_iter, best_mean_iou))
         batch_start = time.time()
-    test(obj)
+    test(model, test_loader, args)
     logging.shutdown()
     
     # Sleep for a second to let dataloader release resources.

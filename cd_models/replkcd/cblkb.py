@@ -5,7 +5,7 @@ import paddle.nn.functional as F
 import os
 import paddleseg.models.layers as layers
 import sys
-from models.reparams import Reparams, RepConvBn
+from .reparams import Reparams, RepConvBn
 # from ..utils import *
 
 

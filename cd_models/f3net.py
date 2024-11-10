@@ -9,7 +9,7 @@ class F3Net(nn.Layer):
         kernels = 7
         self.in_channels = in_channels
         self.encode1 = backbone(3)#(3, 34)
-        self.encode2 = backbone(3)
+        # self.encode2 = backbone(3)
 
         self.lkff1 = FFA(64,kernels)
         self.lkff2 = FFA(128,kernels)
@@ -28,7 +28,7 @@ class F3Net(nn.Layer):
     def forward(self, x):
         x1 ,x2 = x[:, :self.in_channels//2, :, :], x[:, self.in_channels//2:, :, :]
         self.feature1 = self.encode1(x1)
-        self.feature2 = self.encode2(x2)
+        self.feature2 = self.encode1(x2)
 
         # for i in self.feature1:
         #     print(i.shape)
@@ -46,8 +46,7 @@ class F3Net(nn.Layer):
         y = self.up4(y, self.augf1)
         # y = nn.functional.interpolate(y, scale_factor=2, mode='bilinear', align_corners=True)
         return self.classier(y)
-    
-    
+
 
 class FFA(nn.Layer):
     # feature fusing and aggregation

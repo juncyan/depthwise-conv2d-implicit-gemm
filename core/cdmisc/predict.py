@@ -80,14 +80,9 @@ def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
             name = data['name']
             label = data['label'].astype('int64')
 
-            if img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
+            images = data['img'].cuda()
+            pred = model(images)
                 
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img2'].cuda()
-                pred = model(img1, img2)
 
             if hasattr(model, "predict"):
                 pred = model.predict(pred)
@@ -185,8 +180,6 @@ def test(model, test_dataset, args=None):
         weights_path (string, optional): weights saved local.
     """
     assert args != None, "args is None, please check!"
-
-    model = args.model
     model.eval()
     if args.best_model_path:
         layer_state_dict = paddle.load(f"{args.best_model_path}")
@@ -198,14 +191,14 @@ def test(model, test_dataset, args=None):
 
     time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
 
-    img_dir = f"/mnt/data/Results/{args.dataset}/{args.model_name}_{time_flag}"
+    img_dir = f"/mnt/data/Results/{args.dataset}/{args.model}_{time_flag}"
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
 
     color_label = args.color_label
 
     logger = load_logger(f"{img_dir}/prediction.log")
-    logger.info(f"test {args.dataset} on {args.model_name}")
+    logger.info(f"test {args.dataset} on {args.model}")
 
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()
@@ -220,15 +213,9 @@ def test(model, test_dataset, args=None):
             name = data['name']
             label = data['label'].astype('int64')
 
-            if img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
+            images = data['img'].cuda()
+            pred = model(images)
                 
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img2'].cuda()
-                pred = model(img1, img2)
-
             if hasattr(model, "predict"):
                 pred = model.predict(pred)
             else:
@@ -310,7 +297,7 @@ def test(model, test_dataset, args=None):
         data.append(lab)
     if data != []:
         data = np.array(data)
-        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{args.model_name}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)
+        pd.DataFrame(data).to_csv(os.path.join(img_dir, f'{args.model}_violin.csv'), header=['TN', 'TP', 'FP', 'FN'], index=False)
 
 def cls_count(label):
     cls_nums = []

@@ -6,6 +6,87 @@ from PIL import Image
 import paddle
 from paddle.io import Dataset
 from .utils import one_hot_it
+from skimage import io
+import core.datasets.imutils as imutils
+
+
+class CDReader(Dataset):
+    def __init__(self,path_root="./dataset/",mode="train"):
+        super(CDReader,self).__init__()
+
+        self.aug = mode == "train"
+        self.path_root = os.path.join(path_root, mode)
+        self.data_list = self._get_list(self.path_root)
+        self.data_num = len(self.data_list)
+
+        self.label_info = pd.read_csv(os.path.join(path_root, 'label_info.csv'))
+        self.label_color = np.array([[1, 0], [0, 1]])
+
+        self.file_name = []
+        self.sst1_images = []
+        self.sst2_images = []
+        self.gt_images = []
+        
+        for _file in self.data_list:
+            self.sst1_images.append(os.path.join(self.path_root, "A", _file))
+            self.sst2_images.append(os.path.join(self.path_root, "B", _file))
+            self.gt_images.append(os.path.join(self.path_root, "label", _file))
+            self.file_name.append(_file)
+               
+
+    def __getitem__(self, index):
+
+        A_path = self.sst1_images[index]
+        B_path = self.sst2_images[index]
+        cd_path = self.gt_images[index]
+
+        A_img = np.array(io.imread(A_path), np.float32)
+        B_img = np.array(io.imread(B_path), np.float32)
+      
+        label = np.array(io.imread(cd_path), np.float16)
+
+        sst1, sst2, label = self.__transforms(self.aug, A_img, B_img, label)
+
+        if (len(label.shape) == 3):
+            label = one_hot_it(label, self.label_info)
+        elif (len(label.shape) == 2):
+            label = np.array((label != 0), dtype=np.int8)
+            label = self.label_color[label]
+
+        label = np.transpose(label, [2,0,1])
+        label = paddle.to_tensor(label).astype('int64')
+    
+        sst1 = paddle.to_tensor(sst1)
+        sst2 = paddle.to_tensor(sst2)
+        label = paddle.to_tensor(label.astype(np.float32))
+        image = paddle.concat([sst1, sst2], axis=0)
+
+        if self.aug:
+            data = {"img": image, "label": label}
+        else:
+            data = {"img": image, "label": label, 'name': self.file_name[index]}
+        return data
+        
+    def __len__(self):
+        return self.data_num
+
+    def _get_list(self, list_path):
+        data_list = os.listdir(os.path.join(list_path,'A'))
+        return data_list
+    
+    def __transforms(self, aug, pre_img, post_img, cd_label):
+        if aug:
+            # pre_img, post_img, cd_label, t1_label, t2_label = imutils.random_crop_mcd(pre_img, post_img, cd_label, t1_label, t2_label, self.crop_size)
+            pre_img, post_img, cd_label = imutils.random_fliplr(pre_img, post_img, cd_label)
+            pre_img, post_img, cd_label = imutils.random_flipud(pre_img, post_img, cd_label)
+            pre_img, post_img, cd_label = imutils.random_rot(pre_img, post_img, cd_label)
+
+        pre_img = imutils.normalize_img(pre_img)  # imagenet normalization
+        pre_img = np.transpose(pre_img, (2, 0, 1))
+        post_img = imutils.normalize_img(post_img)  # imagenet normalization
+        post_img = np.transpose(post_img, (2, 0, 1))
+
+        return pre_img, post_img, cd_label
 
 
 class DataReader(Dataset):

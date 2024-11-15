@@ -45,14 +45,9 @@ def evaluate(model, val_dataset, args=None):
 
             label = data['label'].astype('int64')
             
-            if args.img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
-                
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img2'].cuda()
-                pred = model(img1, img2)
+            images = data['img'].cuda()
+            pred = model(images)
+
 
             
             if hasattr(model, "predict"):
@@ -85,11 +80,12 @@ def evaluate(model, val_dataset, args=None):
     miou = metrics["miou"]
     mf1 = metrics["mf1"]
     kappa = metrics["kappa"]
+    iou1 = metrics["iou_1"]
 
     if args.logger != None:
         infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(args.val_num, batch_cost, reader_cost)
         args.logger.info(infor)
-        args.logger.info("[METRICS] PA:{:.4},mIoU:{:.4},kappa:{:.4},Macro_f1:{:.4}".format(pa,miou,kappa,mf1))
+        args.logger.info("[METRICS] PA:{:.4},mIoU:{:.4},kappa:{:.4},Macro_f1:{:.4}, IoU 1:{:.4f}".format(pa,miou,kappa,mf1, iou1))
         
     
     d = pd.DataFrame([metrics])
@@ -98,4 +94,4 @@ def evaluate(model, val_dataset, args=None):
     else:
         d.to_csv(args.metric_path, index=False,float_format="%.4f")
         
-    return miou
+    return iou1

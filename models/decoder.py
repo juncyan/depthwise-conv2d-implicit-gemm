@@ -5,6 +5,8 @@ from paddleseg.models import layers
 
 from models.attention import ECA, RandFourierFeature
 from models.utils import Transformer_block, features_transfer
+from cd_models.mamba.mamba import Mamba, MambaConfig
+# from cd_models.mamba.ppmamba import MambaBlock
 
 
 class SemanticDv0(nn.Layer):

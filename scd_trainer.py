@@ -44,13 +44,16 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 # model = P2V(3,2)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Semantic Segmentation Overfitting Test')
     # model
     parser.add_argument('--model', type=str, default='fssh',
                         help='model name (default: msfgnet)')
+    parser.add_argument('--root', type=str, default='./output',
+                        help='run save dir (default: ./output)')
     parser.add_argument('--img_size', type=int, default=512,
                         help='input image size (default: 256)')
     parser.add_argument('--device', type=str, default='gpu:0',
@@ -83,8 +86,8 @@ if __name__ == "__main__":
     print("main")
     args = parse_args()
     # m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
-    model = SCDSamV1(img_size=args.img_size)#m[args.model](img_size=args.img_size)
-    w = Work(model, args,'./output')
-    w()
+    model = SCDSamV1(img_size=args.img_size, num_seg=args.num_classes)#m[args.model](img_size=args.img_size)
+    w = Work(model, args)
+    
 
 

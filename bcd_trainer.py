@@ -50,6 +50,8 @@ def parse_args():
     # model
     parser.add_argument('--model', type=str, default='fssh',
                         help='model name (default: msfgnet)')
+    parser.add_argument('--root', type=str, default='./output',
+                        help='model name (default: ./output)')
     parser.add_argument('--img_size', type=int, default=256,
                         help='input image size (default: 256)')
     parser.add_argument('--device', type=str, default='gpu:0',
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     args = parse_args()
     # m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
     model = SamH_CD(img_size=args.img_size)#m[args.model](img_size=args.img_size)
-    w = Work(model, args,'./output')
-    w()
+    w = Work(model, args)
+  
 
 

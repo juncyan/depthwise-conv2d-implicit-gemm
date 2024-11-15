@@ -69,15 +69,9 @@ def train(model, train_dataset, val_dataset, test_dataset, args):
 
         for data in tqdm(train_dataset):
             labels = data['label'].astype('int64').cuda()
-            if args.img_ab_concat:
-                images = data['img'].cuda()
-                pred = model(images)
+            images = data['img'].cuda()
+            pred = model(images)
         
-            else:
-                img1 = data['img1'].cuda()
-                img2 = data['img2'].cuda()
-                pred = model(img1, img2)
-            
             if hasattr(model, "loss"):
                 loss_list = model.loss(pred, labels)
             else:
@@ -128,7 +122,7 @@ def train(model, train_dataset, val_dataset, test_dataset, args):
         if args.logger !=  None:
             args.logger.info("[TRAIN] best iter {}, max mIoU {:.4f}".format(best_model_iter, best_mean_iou))
         batch_start = time.time()
-    test(args)
+    test(model,test_dataset,args)
     logging.shutdown()
     
     # Sleep for a second to let dataloader release resources.

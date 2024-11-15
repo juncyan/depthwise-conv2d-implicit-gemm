@@ -55,13 +55,13 @@ class SCDSam(nn.Layer):
         b1, b, p1, p = self.extractor(x1, x2)
         # print(b1.shape, b.shape, p1.shape, p.shape)
         tb1 = self.fusion1(b1, b)
-        tp1 = self.fusion1(p1, p)
+        tp2 = self.fusion2(p1, p)
         
         t= self.cdfusion(b1, b, p1, p)
 
         t = self.cls(t)
         outa = self.scls1(tb1)
-        outb = self.scls2(tp1)
+        outb = self.scls2(tp2)
         return t, outa, outb
     
     def feature_extractor(self, x):
@@ -112,13 +112,13 @@ class SCDSamV1(nn.Layer):
         b1, b, p1, p = self.extractor(x1, x2)
         
         tb1 = self.fusion1(b1, b)
-        tp1 = self.fusion1(p1, p)
+        tp2 = self.fusion2(p1, p)
         
         t= self.cdfusion(b1, b, p1, p)
 
         t = self.cls(t)
         outa = self.scls1(tb1)
-        outb = self.scls2(tp1)
+        outb = self.scls2(tp2)
         return t, outa, outb
     
     def feature_extractor(self, x):

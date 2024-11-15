@@ -59,7 +59,7 @@ def train(model, train_loader, val_loader, test_loader, args):
         epoch = _epoch + 1
         model.train()
 
-        for img1, img2, gt1, gt2, gt,_ in tqdm(train_loader):
+        for img1, img2, gt1, gt2, gt in tqdm(train_loader):
             # paddle.Tensor().type(paddle.float32)
             img1 = img1.cuda()
             img2 = img2.cuda()

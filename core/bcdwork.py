@@ -7,7 +7,7 @@ import numpy as np
 import datetime
 from paddleseg.utils import worker_init_fn
 
-from .datasets import DataReader, TestReader
+from .datasets import CDReader
 from .cdmisc import load_logger
 from .cdmisc import train
 
@@ -17,7 +17,7 @@ class Work():
         self._seed_init()
         model_name = model.__str__().split("(")[0]
         self.args = args
-        self.args.model_name = model_name
+        self.args.model = model_name
         self.color_label = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
 
         paddle.device.set_device(self.args.device)
@@ -30,9 +30,9 @@ class Work():
         train(model, self.train_loader, self.val_loader, self.test_loader, self.args)
 
     def dataloader(self, datasetlist=['train', 'val', 'test']):
-        train_data = DataReader(self.dataset_path, datasetlist[0], self.args.en_load_edge, self.args.img_ab_concat)
-        val_data = DataReader(self.dataset_path, datasetlist[2], self.args.en_load_edge, self.args.img_ab_concat)
-        test_data = TestReader(self.dataset_path, datasetlist[2], self.args.en_load_edge, self.args.img_ab_concat)
+        train_data = CDReader(self.dataset_path, datasetlist[0])
+        val_data = CDReader(self.dataset_path, datasetlist[2])
+        test_data = CDReader(self.dataset_path, datasetlist[2])
 
         batch_sampler = paddle.io.BatchSampler(train_data, batch_size=self.args.batch_size, shuffle=True, drop_last=True)
 
@@ -76,19 +76,26 @@ class Work():
     def logger(self):
         self.dataset_path = '/mnt/data/Datasets/{}'.format(self.args.dataset)
         time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
-        self.save_dir = os.path.join('{}/{}'.format(self.args.root, self.args.dataset.lower()), f"{self.args.model_name}_{time_flag}")
+        self.save_dir = os.path.join('{}/{}'.format(self.args.root, self.args.dataset.lower()), f"{self.args.model}_{time_flag}")
     
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
 
-        self.args.best_model_path = os.path.join(self.save_dir, "{}_best.pth".format(self.args.model_name))
-        log_path = os.path.join(self.save_dir, "train_{}.log".format(self.args.model_name))
-        self.args.metric_path = os.path.join(self.save_dir, "{}_metrics.csv".format(self.args.model_name))
+        self.args.best_model_path = os.path.join(self.save_dir, "{}_best.pth".format(self.args.model))
+        log_path = os.path.join(self.save_dir, "train_{}.log".format(self.args.model))
+        self.args.metric_path = os.path.join(self.save_dir, "{}_metrics.csv".format(self.args.model))
+        self.args.save_dir = self.save_dir
         print("log save at {}, metric save at {}, weight save at {}".format(log_path, self.args.metric_path, self.args.best_model_path))
         self.args.logger = load_logger(log_path)
+        self.log_misc()
         self.args.logger.info("log save at {}, metric save at {}, weight save at {}".format(log_path, self.args.metric_path, self.args.best_model_path))
+    
+    def log_misc(self):
+        if self.args.logger == None:
+            return
+        self.args.logger.info("Model {}, Datasets {}".format(self.args.model, self.args.dataset))
+        self.args.logger.info("lr {}, batch_size {}".format(str(self.args.lr), self.args.batch_size))
 
-    def __call__(self):
-        train(self)
+   
 
             

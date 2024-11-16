@@ -58,6 +58,7 @@ def evaluate(model, val_loader, args):
 
             change_mask = F.sigmoid(cd).cpu().detach()>0.5 #paddle.argmax(cd, axis=1)
             change_mask = change_mask.squeeze()
+            change_mask = change_mask.cast('int64')
             sem1 = paddle.argmax(sem1, axis=1)
             sem2 = paddle.argmax(sem2, axis=1)
 

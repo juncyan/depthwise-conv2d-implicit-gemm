@@ -16,7 +16,7 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 from cd_models.replkcd import CD_RLKNet
 
-from models.model import SCDSam, SCDSamV1
+from models.model import SCDSam, SCDSamV1, SCDSam_Mamba
 
 
 from core.scdwork import Work
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     print("main")
     args = parse_args()
     # m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
-    model = SCDSamV1(img_size=args.img_size, num_seg=args.num_classes)#m[args.model](img_size=args.img_size)
+    model = SCDSam_Mamba(img_size=args.img_size, num_seg=args.num_classes)#m[args.model](img_size=args.img_size)
     w = Work(model, args)
     
 

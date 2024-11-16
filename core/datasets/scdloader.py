@@ -57,7 +57,7 @@ class SCDReader(Dataset):
 
         if os.path.exists(cd_path):
             gtcd = np.array(io.imread(cd_path), np.float32)
-            # gtcd = gtcd / 255.
+            gtcd = gtcd / 255.
         else:
             gtcd = labA > 0
     

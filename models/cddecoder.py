@@ -5,6 +5,7 @@ from paddleseg.models import layers
 
 from models.utils import MLPBlock, Transformer_block, features_transfer
 from models.attention import RandFourierFeature
+from paddlenlp.transformers.mamba.modeling import MambaMixer, MambaConfig
 
 from .decoder import Up
 
@@ -55,6 +56,41 @@ class CD_D1(nn.Layer):
         f3 = self.ln(f3)
         f3 = self.ffa3(f3,f3,f3)
     
+        f3 = features_transfer(f3)
+        f3 = self.conv3(f3)
+        f3 = F.interpolate(f3, self.img_size, mode='bilinear', align_corners=True)
+        f3 = f3 + f1
+        return f3
+
+
+class CD_Mamba(nn.Layer):
+    def __init__(self, in_c1, in_c2, out_c,img_size):
+        super().__init__()
+        self.img_size = [img_size, img_size]
+        cfg1 = MambaConfig(4096, in_c1)
+        cfg2 = MambaConfig(1024, in_c2)
+        self.ssm1 = MambaMixer(cfg1, 0)
+        self.ssm2 = MambaMixer(cfg2, 0)
+        
+        self.proj1 = nn.Linear(2*in_c1, in_c1)
+        self.conv1 = nn.Sequential(layers.ConvBNReLU(in_c1, out_c, 1), layers.ConvBNReLU(out_c, out_c, 3))
+
+        self.proj2 = nn.Sequential(nn.Linear(2*in_c2, in_c2), nn.LayerNorm(in_c2))
+      
+        self.conv3 = nn.Sequential(layers.ConvBNReLU(in_c2, out_c, 1), layers.ConvBNReLU(out_c, out_c, 3))
+
+    
+    def forward(self, x1, x2, y1, y2):
+        f1 = paddle.concat([x2, y2], axis=-1)
+        f1 = self.proj1(f1)
+        f1 = self.ssm1(f1)
+        f1 = features_transfer(f1)
+        f1 = self.conv1(f1)
+        f1 = F.interpolate(f1, self.img_size, mode='bilinear', align_corners=True)
+
+        f3 = paddle.concat([x1, y1], axis=-1)
+        f3 = self.proj2(f3)
+        f3 = self.ssm2(f3)
         f3 = features_transfer(f3)
         f3 = self.conv3(f3)
         f3 = F.interpolate(f3, self.img_size, mode='bilinear', align_corners=True)

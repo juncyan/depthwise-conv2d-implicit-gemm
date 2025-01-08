@@ -10,7 +10,20 @@ from paddle.nn.initializer import Constant
 from paddle.vision.ops import DeformConv2D
 from paddle.autograd import PyLayer
 
-nn.LayerNorm
+
+class DropPath(nn.Layer):
+    def __init__(self, drop_prob=0.0):
+        super(DropPath, self).__init__()
+        self.drop_prob = drop_prob
+
+    def forward(self, x):
+        if self.training and self.drop_prob > 0.0:
+            keep_prob = 1.0 - self.drop_prob
+            shape = (x.shape[0],) + (1,) * (x.ndim - 1) 
+            mask = paddle.to_tensor(paddle.bernoulli(paddle.full(shape, keep_prob)))
+            x = x / keep_prob * mask 
+        return x
+
 
 class MLPBlock(nn.Layer):
     def __init__(self,

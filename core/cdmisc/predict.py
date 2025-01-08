@@ -195,7 +195,7 @@ def test(model, test_dataset, args=None):
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
 
-    color_label = args.color_label
+    color_label = np.array([[0,0,0,],[255,255,255]])
 
     logger = load_logger(f"{img_dir}/prediction.log")
     logger.info(f"test {args.dataset} on {args.model}")

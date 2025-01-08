@@ -1,4 +1,3 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import logging
 import os
 import sys
@@ -36,24 +35,21 @@ def setup_logger(name, save_dir, distributed_rank, filename="log.txt", mode='w')
 
 def load_logger(save_log_dir,save=True,print=True,config=None):
     logger = logging.getLogger()
-    logger.setLevel(level=logging.DEBUG)
+    logger.setLevel(level=logging.INFO)
 
-    # StreamHandler
-    if print:
-        stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setLevel(level=logging.INFO)
-        formatter = logging.Formatter(datefmt='%Y/%m/%d %H:%M:%S',
-                                      fmt='[ %(asctime)s ] %(message)s')
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(datefmt='%Y/%m/%d %H:%M:%S',
+                                fmt='[ %(asctime)s ] %(message)s')
+    stream_handler.setLevel(logging.INFO)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
 
-    # FileHandler
-    if save:
-        file_handler = RotatingFileHandler(save_log_dir, maxBytes=1024000, backupCount=5)
-        file_handler.setLevel(level=logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+    file_handler = RotatingFileHandler(save_log_dir, maxBytes=1024000, backupCount=5)
+    formatter = logging.Formatter(datefmt='%Y/%m/%d %H:%M:%S',
+                                fmt='[ %(asctime)s ] %(message)s')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
     if config != None:
         config_dict = {}

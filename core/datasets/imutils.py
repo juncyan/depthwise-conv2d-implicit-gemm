@@ -28,6 +28,13 @@ def random_fliplr(pre_img, post_img, label):
 
     return pre_img, post_img, label
 
+def random_fliplr_seg(img, label):
+    if random.random() > 0.5:
+        label = np.fliplr(label)
+        img = np.fliplr(img)
+
+    return img, label
+
 def random_fliplr_bda(pre_img, post_img, label_1, label_2):
     if random.random() > 0.5:
         label_1 = np.fliplr(label_1)
@@ -38,15 +45,14 @@ def random_fliplr_bda(pre_img, post_img, label_1, label_2):
     return pre_img, post_img, label_1, label_2
 
 
-def random_fliplr_mcd(pre_img, post_img, label_cd, label_1, label_2):
+def random_fliplr_mcd(pre_img, post_img, label_1, label_2):
     if random.random() > 0.5:
-        label_cd = np.fliplr(label_cd)
         label_1 = np.fliplr(label_1)
         label_2 = np.fliplr(label_2)
         pre_img = np.fliplr(pre_img)
         post_img = np.fliplr(post_img)
 
-    return pre_img, post_img, label_cd, label_1, label_2
+    return pre_img, post_img, label_1, label_2
 
 def random_flipud(pre_img, post_img, label):
     if random.random() > 0.5:
@@ -55,6 +61,13 @@ def random_flipud(pre_img, post_img, label):
         post_img = np.flipud(post_img)
 
     return pre_img, post_img, label
+
+def random_flipud_seg(img, label):
+    if random.random() > 0.5:
+        label = np.flipud(label)
+        img = np.flipud(img)
+      
+    return img, label
 
 def random_flipud_bda(pre_img, post_img, label_1, label_2):
     if random.random() > 0.5:
@@ -67,16 +80,15 @@ def random_flipud_bda(pre_img, post_img, label_1, label_2):
     return pre_img, post_img, label_1, label_2
 
 
-def random_flipud_mcd(pre_img, post_img, label_cd, label_1, label_2):
+def random_flipud_mcd(pre_img, post_img, label_1, label_2):
     if random.random() > 0.5:
-        label_cd = np.flipud(label_cd)
         label_1 = np.flipud(label_1)
         label_2 = np.flipud(label_2)
 
         pre_img = np.flipud(pre_img)
         post_img = np.flipud(post_img)
 
-    return pre_img, post_img, label_cd, label_1, label_2
+    return pre_img, post_img, label_1, label_2
 
 
 def random_rot(pre_img, post_img, label):
@@ -87,6 +99,14 @@ def random_rot(pre_img, post_img, label):
     label = np.rot90(label, k).copy()
 
     return pre_img, post_img, label
+
+def random_rot_seg(img, label):
+    k = random.randrange(3) + 1
+
+    img = np.rot90(img, k).copy()
+    label = np.rot90(label, k).copy()
+
+    return img, label
 
 
 def random_rot_bda(pre_img, post_img, label_1, label_2):
@@ -100,16 +120,15 @@ def random_rot_bda(pre_img, post_img, label_1, label_2):
     return pre_img, post_img, label_1, label_2
 
 
-def random_rot_mcd(pre_img, post_img, label_cd, label_1, label_2):
+def random_rot_mcd(pre_img, post_img, label_1, label_2):
     k = random.randrange(3) + 1
     
     pre_img = np.rot90(pre_img, k).copy()
     post_img = np.rot90(post_img, k).copy()
     label_1 = np.rot90(label_1, k).copy()
     label_2 = np.rot90(label_2, k).copy()
-    label_cd = np.rot90(label_cd, k).copy()
 
-    return pre_img, post_img, label_cd, label_1, label_2
+    return pre_img, post_img, label_1, label_2
 
 
 def random_crop(img, crop_size, mean_rgb=[0, 0, 0], ignore_index=255):

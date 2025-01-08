@@ -9,6 +9,7 @@ from paddleseg.utils import worker_init_fn
 from paddleseg.models.losses import BCELoss
 
 from .datasets import SCDReader
+from .datasets.scdloader import MusReader
 from .cdmisc import load_logger
 from .scdmisc.train import train
 
@@ -19,7 +20,6 @@ class Work():
         model_name = model.__str__().split("(")[0]
         self.args = args
         self.args.model = model_name
-        self.color_label = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
 
         paddle.device.set_device(self.args.device)
         self.model = model.to(self.args.device)
@@ -34,13 +34,15 @@ class Work():
         train_data = SCDReader(self.dataset_path, datasetlist[0])
         val_data = SCDReader(self.dataset_path, datasetlist[2])
         test_data = SCDReader(self.dataset_path, datasetlist[2])
-        self.args.label_info = test_data.label_info
 
         batch_sampler = paddle.io.BatchSampler(train_data, batch_size=self.args.batch_size, shuffle=True, drop_last=True)
 
         self.args.traindata_num = train_data.__len__()
         self.args.val_num = val_data.__len__()
         self.args.test_num = test_data.__len__()
+
+        self.args.label_info = np.uint8(np.transpose(test_data.label_info.values, [1,0]))
+
         self.train_loader = paddle.io.DataLoader(
             train_data,
             batch_sampler=batch_sampler,
@@ -59,7 +61,7 @@ class Work():
             worker_init_fn=worker_init_fn, )
 
         test_batch_sampler = paddle.io.BatchSampler(
-            test_data, batch_size=min(self.args.batch_size, 4), shuffle=False, drop_last=False)
+            test_data, batch_size=self.args.batch_size, shuffle=False, drop_last=False)
 
         self.test_loader = paddle.io.DataLoader(
             test_data,
@@ -83,12 +85,12 @@ class Work():
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
 
-        self.args.best_model_path = os.path.join(self.save_dir, "{}_best.pth".format(self.args.model))
+        self.args.best_model_path = os.path.join(self.save_dir, "{}_best.pdparams".format(self.args.model))
         log_path = os.path.join(self.save_dir, "train_{}.log".format(self.args.model))
         self.args.metric_path = os.path.join(self.save_dir, "{}_metrics.csv".format(self.args.model))
         self.args.save_dir = self.save_dir
         print("log save at {}, metric save at {}, weight save at {}".format(log_path, self.args.metric_path, self.args.best_model_path))
-        self.args.logger = load_logger(log_path)
+        self.args.logger = load_logger(log_path, config=self.args)
         self.log_misc()
         self.args.logger.info("log save at {}, metric save at {}, weight save at {}".format(log_path, self.args.metric_path, self.args.best_model_path))
     

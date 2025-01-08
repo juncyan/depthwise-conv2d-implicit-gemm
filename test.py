@@ -1,15 +1,21 @@
 import paddle
-from paddle import optimizer
-from paddle.nn import functional as F
-from cd_models.mamba.mamba import Mamba, MambaConfig
-from cd_models.mamba.vmamba import SS2D, VSSBackbone
-from models.model import SCDSam_Mamba
-from paddlenlp.transformers.mamba.modeling import MambaMixer, MambaConfig
+import os
+import cv2
+import numpy as np
+import pandas as pd
+import glob
+# from skimage import io
+# from models.replk import RepLKBlock, RepLKNet
 
-x = paddle.rand([1, 3,512, 512]).cuda()
+# x = paddle.randn([1, 3, 224, 224]).cuda()
+# m = RepLKBlock(3,16,13,3,0.2).to("gpu")
+# y = m(x)
+# print(y.shape)
+from depthwise_conv2d_implicit_gemm import DepthWiseConv2dImplicitGEMM
 
-# m = SS2D(32).to('gpu:0')
-m = VSSBackbone().to('gpu:0')
-y = m(x)
-for i in y:
-    print(i.shape)
+
+x = paddle.randn([1, 384, 13, 13]).cuda()
+
+m1 = DepthWiseConv2dImplicitGEMM(384, 31, bias=False).to("gpu")
+y = m1(x)
+print(y.shape)

@@ -86,7 +86,7 @@ class Work():
         self.args.metric_path = os.path.join(self.save_dir, "{}_metrics.csv".format(self.args.model))
         self.args.save_dir = self.save_dir
         print("log save at {}, metric save at {}, weight save at {}".format(log_path, self.args.metric_path, self.args.best_model_path))
-        self.args.logger = load_logger(log_path)
+        self.args.logger = load_logger(log_path, config=self.args)
         self.log_misc()
         self.args.logger.info("log save at {}, metric save at {}, weight save at {}".format(log_path, self.args.metric_path, self.args.best_model_path))
     

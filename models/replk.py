@@ -21,6 +21,7 @@ A Paddle Impelementation of RepLKNet as described in:
 import os
 import paddle
 import paddle.nn as nn
+from .utils import DropPath
 
 
 def get_conv2d(in_channels,
@@ -34,23 +35,23 @@ def get_conv2d(in_channels,
     """ Return a regular Conv op or an optimized Conv op for large kernel (not supported yet)
     Now only support regular conv op
     """
-    # use_large_kernel_impl = kernel_size > 5 if isinstance(kernel_size, int) else kernel_size[0] > 5
-    # has_large_kernel_impl = 'LARGE_KERNEL_CONV_IMPL' in os.environ
-    # if (has_large_kernel_impl and use_large_kernel_impl and
-    #     in_channels == out_channels and out_channels == groups and
-    #     stride == 1 and padding == kernel_size // 2 and dilation == 1): 
-    #     from depthwise_conv2d_implicit_gemm import DepthWiseConv2DImplicitGEMM
-    #     conv = DepthWiseConv2DImplicitGEMM(in_channels, kernel_size, bias_attr=bias_attr) 
-    # else:
-    conv = nn.Conv2D(in_channels=in_channels,
-                        out_channels=out_channels,
-                        kernel_size=kernel_size,
-                        stride=stride,
-                        padding=padding,
-                        dilation=dilation,
-                        groups=groups,
-                        weight_attr=paddle.ParamAttr(initializer=nn.initializer.KaimingNormal()),
-                        bias_attr=bias_attr)
+    use_large_kernel_impl = kernel_size > 5 if isinstance(kernel_size, int) else kernel_size[0] > 5
+    has_large_kernel_impl = 'LARGE_KERNEL_CONV_IMPL' in os.environ
+    if (has_large_kernel_impl and use_large_kernel_impl and
+        in_channels == out_channels and out_channels == groups and
+        stride == 1 and padding == kernel_size // 2 and dilation == 1): 
+        from depthwise_conv2d_implicit_gemm import DepthWiseConv2dImplicitGEMM
+        conv = DepthWiseConv2dImplicitGEMM(in_channels, kernel_size, bias_attr=bias_attr) 
+    else:
+        conv = nn.Conv2D(in_channels=in_channels,
+                            out_channels=out_channels,
+                            kernel_size=kernel_size,
+                            stride=stride,
+                            padding=padding,
+                            dilation=dilation,
+                            groups=groups,
+                            weight_attr=paddle.ParamAttr(initializer=nn.initializer.KaimingNormal()),
+                            bias_attr=bias_attr)
     return conv
 
 
@@ -155,6 +156,7 @@ class ReparamLargeKernelConv(nn.Layer):
                                                      act_layer=None)
 
     def forward(self, x):
+        self.merge_kernel()
         if hasattr(self, 'large_kernel_reparam'):
             out = self.large_kernel_reparam(x)
         else:
@@ -252,6 +254,7 @@ class ConvFFN(nn.Layer):
                  out_channels,
                  droppath):
         super().__init__()
+        
         self.drop_path = DropPath(droppath) if droppath > 0. else nn.Identity()
         self.pre_ffn_bn = nn.BatchNorm2D(in_channels)
         # 1x1 pointwise conv + bn + relu
@@ -467,34 +470,3 @@ def build_replknet(config):
     if config.MODEL.SYNC_BN:
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
     return model
-
-
-class DropPath(nn.Layer):
-    """DropPath class"""
-    def __init__(self, drop_prob=None):
-        super().__init__()
-        self.drop_prob = drop_prob
-
-    def drop_path(self, inputs):
-        """drop path op
-        Args:
-            input: tensor with arbitrary shape
-            drop_prob: float number of drop path probability, default: 0.0
-            training: bool, if current mode is training, default: False
-        Returns:
-            output: output tensor after drop path
-        """
-        # if prob is 0 or eval mode, return original input
-        if self.drop_prob == 0. or not self.training:
-            return inputs
-        keep_prob = 1 - self.drop_prob
-        keep_prob = paddle.to_tensor(keep_prob, dtype='float32')
-        shape = (inputs.shape[0], ) + (1, ) * (inputs.ndim - 1)  # shape=(N, 1, 1, 1)
-        #random_tensor = keep_prob + paddle.rand(shape, dtype=inputs.dtype)
-        random_tensor = keep_prob + paddle.rand(shape, dtype='float32').astype(inputs.dtype)
-        random_tensor = random_tensor.floor() # mask
-        output = inputs.divide(keep_prob) * random_tensor # divide to keep same output expectation
-        return output
-
-    def forward(self, inputs):
-        return self.drop_path(inputs)

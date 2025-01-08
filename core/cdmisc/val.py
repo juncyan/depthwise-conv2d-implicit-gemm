@@ -31,7 +31,6 @@ def evaluate(model, val_dataset, args=None):
     Launch evalution.
     """
     assert args != None, "args is None, please check!"
-    model = args.model
     
     reader_cost_averager = TimeAverager()
     batch_cost_averager = TimeAverager()

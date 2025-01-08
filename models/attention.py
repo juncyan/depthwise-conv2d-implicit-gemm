@@ -2,7 +2,8 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.tensor
-import paddleseg.models.layers as layers
+from einops import rearrange
+from paddleseg.models import layers
 from typing import Union, Optional
 import numpy as np
 from models.utils import MLPBlock
@@ -13,34 +14,65 @@ def img_mse(output, gt):
 def img_psnr(mse):
   return -10.0 * np.log10(2.0 * mse)
 
+class DFFN(nn.Layer):
+    def __init__(self, dim, ffn_expansion_factor=2.66, bias=True):
+        super(DFFN, self).__init__()
+
+        hidden_features = int(dim * ffn_expansion_factor)
+
+        self.patch_size = 8
+        self.dim = dim
+        self.project_in = nn.Conv2D(dim, hidden_features * 2, kernel_size=1, bias_attr=bias)
+        self.dwconv = nn.Conv2D(hidden_features * 2, hidden_features * 2, kernel_size=3, stride=1, padding=1,
+                                groups=hidden_features * 2, bias_attr=bias)
+
+        self.fft = self.create_parameter(shape=[hidden_features * 2, 1, 1, self.patch_size, self.patch_size // 2 + 1],
+                                         default_initializer=nn.initializer.Constant(1.0), dtype='float32')
+        self.project_out = nn.Conv2D(hidden_features, dim, kernel_size=1, bias_attr=bias)
+
+    def forward(self, x):
+        x = self.project_in(x)
+        x_patch = rearrange(x, 'b c (h patch1) (w patch2) -> b c h w patch1 patch2', patch1=self.patch_size,
+                            patch2=self.patch_size)
+        
+        x_patch_fft = paddle.fft.rfft2(x_patch.astype('float32'))
+        x_patch_fft = x_patch_fft * self.fft
+        x_patch = paddle.fft.irfft2(x_patch_fft)
+        
+        x = rearrange(x_patch, 'b c h w patch1 patch2 -> b c (h patch1) (w patch2)', patch1=self.patch_size,
+                      patch2=self.patch_size)
+ 
+        x = self.dwconv(x)
+        x1, x2 = paddle.split(x, num_or_sections=2, axis=1)
+
+        x = F.gelu(x1) * x2
+        x = self.project_out(x)
+        return x
+
+
+class FFTModel(nn.Layer):
+    def __init__(self, in_dims, out_dims):
+        super(FFTModel, self).__init__()
+        self.fc = nn.Linear(in_dims, out_dims)  # 假设输入是100维，输出是10维
+        self.fft = self.create_parameter(shape=[1, in_dims // 2 + 1],
+                                         default_initializer=nn.initializer.Constant(1.0), dtype='float32')
+
+    def forward(self, x):
+        x_fft = paddle.fft.rfft2(x.astype('float32'))
+        x_fft = x_fft * self.fft
+        x_ifft = paddle.fft.irfft2(x_fft)
+        output = self.fc(x_ifft)
+        return output
+
+
 class RandFourierFeature(nn.Layer):
-    '''
-   - **Initialization (`__init__`)**:
-     - `input_dim`: Dimensionality of the input data.
-     - `num_features`: Number of random Fourier features.
-     - `sigma`: Kernel width parameter.
-     - `W`: Random weights sampled from a normal distribution with mean 0 and standard deviation \( \frac{1}{\sigma} \).
-     - `b`: Random biases sampled uniformly from ([0, 2*pi]).
-
-     - **Forward Method**:
-     - Compute the dot product of the input `x` with the random weights `W`.
-     - Add the random biases `b` to the result.
-     - Compute the cosine and sine of the resulting values.
-     - Concatenate the cosine and sine features along the feature dimension.
-
-     - **Example Usage**:
-     - Create a random input tensor `x` with a batch size of 5 and input dimensionality of 10.
-     - Initialize the `RandomFourierFeatures` layer with the specified parameters.
-     - Compute the random Fourier features for the input tensor `x`.
-    This implementation allows you to create and use Random Fourier Features in PaddlePaddle, enabling efficient approximation of kernel methods for large-scale datasets.
-'''
     def __init__(self, input_dim, num_features=256, sigma=1.0):
         super(RandFourierFeature, self).__init__()
         self.input_dim = input_dim
         self.num_features = num_features
         self.sigma = sigma
         self.ln = nn.Linear(2*num_features, num_features)
-        # Initialize random weights and biases
+      
         self.W = self.create_parameter(
             shape=[self.input_dim, self.num_features],
             default_initializer=nn.initializer.Normal(mean=0.0, std=1.0 / sigma)
@@ -58,21 +90,16 @@ class RandFourierFeature(nn.Layer):
             B, C, W, H = input.shape
             x = input.reshape([B, C, W*H])
             x = x.transpose([0, 2, 1])
-        xW = paddle.matmul(x, self.W)
-        xW_plus_b = xW + self.b
-        cos_features = paddle.cos(xW_plus_b)
-        sin_features = paddle.sin(xW_plus_b)
-        features = paddle.concat([cos_features, sin_features], axis=-1)
-        features = self.ln(features)
-        features = features * x
-        features = F.relu(features)
-        
+        y = paddle.matmul(x, self.W) + self.b
+        features = paddle.cos(y) * np.sqrt(2.0 / self.num_features)
+    
         if len(input.shape) == 4:
             B, C, W, H = input.shape
             features = features.transpose([0, 2, 1])
-            features = features.reshape([B, C, W, H])
+            features = features.reshape([B, -1, W, H])
      
         return features
+
 
 class FCLayer(nn.Layer):
     def __init__(self, in_features, out_features):

@@ -16,7 +16,6 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 from cd_models.replkcd import CD_RLKNet
 
-from models.samcd import SamH_CD
 
 from core.bcdwork import Work
 
@@ -44,6 +43,8 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
 
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Semantic Segmentation Overfitting Test')
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     print("main")
     args = parse_args()
     # m = {"ssh":MSamCD_SSH, "fssh":MSamCD_FSSH, "v2":DHSamCD, "hv2":DHSamCD_v2,"hv5":DHSamCD_v5, 'hv4':DHSamCD_v4}
-    model = SamH_CD(img_size=args.img_size)#m[args.model](img_size=args.img_size)
+    model = MSFGNet()#m[args.model](img_size=args.img_size)
     w = Work(model, args)
   
 

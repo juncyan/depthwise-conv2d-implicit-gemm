@@ -40,8 +40,8 @@ class CDReader(Dataset):
         B_path = self.sst2_images[index]
         cd_path = self.gt_images[index]
 
-        A_img = np.array(io.imread(A_path), np.float32)
-        B_img = np.array(io.imread(B_path), np.float32)
+        A_img = np.array(io.imread(A_path, pilmode="RGB"), np.float32)
+        B_img = np.array(io.imread(B_path, pilmode="RGB"), np.float32)
       
         label = np.array(io.imread(cd_path), np.float16)
 

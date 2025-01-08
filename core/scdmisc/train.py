@@ -69,7 +69,7 @@ def train(model, train_loader, val_loader, test_loader, args):
 
             cd, sem1, sem2 = model(img1, img2)
             # loss = loss_lovasz(cd, sem1, sem2, gt1, gt2, gt)  
-
+            # print(gt.shape, sem1.shape, sem2.shape, gt1.shape, gt2.shape)
             loss_seg = criterion(sem1, gt1) * 0.5 +  criterion(sem2, gt2) * 0.5     
             loss_bn = weighted_BCE_logits(cd, gt)
             loss_sc = criterion_sc(sem1[:,1:], sem2[:,1:], gt)

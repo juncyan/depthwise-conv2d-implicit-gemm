@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import paddle
+import paddle.nn.functional as F
+import paddle.optimizer
 import os
 import time
 from collections import deque
@@ -21,9 +23,6 @@ from copy import deepcopy
 from tqdm import tqdm 
 
 import numpy as np
-import paddle
-import paddle.nn.functional as F
-import paddle.optimizer
 from paddleseg.models.losses import BCELoss
 
 from .val import evaluate
@@ -73,16 +72,13 @@ def train(model, train_dataset, val_dataset, test_dataset, args):
             pred = model(images)
         
             if hasattr(model, "loss"):
-                loss_list = model.loss(pred, labels)
+                loss_total = model.loss(pred, labels)
             else:
                 if (type(pred) == tuple) or (type(pred) == list):
                     pred = pred[0]
-                
-                loss_list = loss(pred, labels)
-
-            loss = loss_list
+                loss_total = loss(pred, labels)
             
-            loss.backward()
+            loss_total.backward()
             optimizer.step()
             
             lr = optimizer.get_lr()
@@ -91,14 +87,14 @@ def train(model, train_dataset, val_dataset, test_dataset, args):
             lr_sche = optimizer._learning_rate
             if isinstance(lr_sche, paddle.optimizer.lr.LRScheduler):
                 if isinstance(lr_sche, paddle.optimizer.lr.ReduceOnPlateau):
-                    lr_sche.step(loss)
+                    lr_sche.step(loss_total)
                 else:
                     lr_sche.step()
 
             model.clear_gradients()
             
             # 
-            avg_loss = np.array(loss.cpu())
+            avg_loss = np.array(loss_total.cpu())
             avg_loss_list.append(avg_loss)
         batch_cost_averager = time.time() - batch_start
         avg_loss = np.mean(avg_loss_list)
@@ -106,9 +102,9 @@ def train(model, train_dataset, val_dataset, test_dataset, args):
         if args.logger != None:
             args.logger.info(
                 "[TRAIN] iter: {}/{}, loss: {:.4f}, lr: {:.6}, batch_cost: {:.2f}, ips: {:.4f} samples/sec".format(
-                    epoch, args.args.iters, avg_loss, lr, batch_cost_averager, batch_cost_averager / args.traindata_num))
+                    epoch, args.iters, avg_loss, lr, batch_cost_averager, batch_cost_averager / args.traindata_num))
 
-        if epoch == args.args.iters:
+        if epoch == args.iters:
             paddle.save(model.state_dict(),
                         os.path.join(args.save_dir, f'last_model.pdparams'))
         mean_iou = evaluate(model, val_dataset, args)

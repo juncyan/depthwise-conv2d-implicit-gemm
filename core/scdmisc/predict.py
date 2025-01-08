@@ -20,16 +20,123 @@ import paddle
 import paddle.nn.functional as F
 import paddle.tensor
 import pandas as pd
-import cv2
+from skimage import io
 import datetime
 from tqdm import tqdm
 import glob
-from skimage import io
+from paddleseg.utils import worker_init_fn
 from paddleseg.utils import TimeAverager, op_flops_funs
 
 from .metric import Metric_SCD
 from core.cdmisc.logger import load_logger
 from core.cdmisc.count_params import flops
+
+
+def predict(model, dataset, weight_path=None, data_name="test", num_classes=2):
+
+    model.eval()
+    if weight_path:
+        layer_state_dict = paddle.load(f"{weight_path}")
+        model.set_state_dict(layer_state_dict)
+    else:
+        exit()
+
+    time_flag = datetime.datetime.strftime(datetime.datetime.now(), r"%Y_%m_%d_%H")
+    model_name = model.__str__().split("(")[0]
+
+    img_dir = f"/mnt/data/Results/{data_name}/{model_name}_{time_flag}"
+    if not os.path.isdir(img_dir):
+        os.makedirs(img_dir)
+
+    # test_data = MusReader(self.dataset_path, datasetlist[1])
+    label_info = np.transpose(dataset.label_info.values, [1,0])
+
+    batch_sampler = paddle.io.BatchSampler(dataset, batch_size=4, shuffle=True, drop_last=True)
+    test_num = dataset.__len__()
+    loader = paddle.io.DataLoader(
+            dataset,
+            batch_sampler=batch_sampler,
+            num_workers=16,
+            return_list=True,
+            worker_init_fn=worker_init_fn, )
+    
+    change_color = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
+
+    logger = load_logger(f"{img_dir}/prediction.log")
+    logger.info(f"test {model_name} on {data_name}")
+
+    reader_cost_averager = TimeAverager()
+    batch_cost_averager = TimeAverager()
+    batch_start = time.time()
+    model.eval()
+    evaluator = Metric_SCD(num_class=num_classes)
+
+    with paddle.no_grad():
+        for img1, img2, gt1, gt2, gt, file in tqdm(loader):
+            reader_cost_averager.record(time.time() - batch_start)
+
+            img1 = img1.cuda()
+            img2 = img2.cuda()
+            cd, sem1, sem2 = model(img1, img2)
+                 
+            batch_cost_averager.record(
+                time.time() - batch_start, num_samples=len(cd))
+            batch_cost = batch_cost_averager.get_average()
+            reader_cost = reader_cost_averager.get_average()
+
+            reader_cost_averager.reset()
+            batch_cost_averager.reset()
+            batch_start = time.time()
+
+
+            change_mask = F.sigmoid(cd).cpu().detach()>0.5 #paddle.argmax(cd, axis=1)
+            change_mask = change_mask.squeeze()
+            change_mask = change_mask.cast('int64')
+            sem1 = paddle.argmax(sem1, axis=1)
+            sem2 = paddle.argmax(sem2, axis=1)
+
+            sem1 = (sem1*change_mask).cpu().numpy()
+            sem2 = (sem2*change_mask).cpu().numpy()
+            
+            evaluator.add_batch(sem1, gt1)
+            evaluator.add_batch(sem2, gt2)
+            gt = np.array(gt, np.int8)
+            for idx, (is1, is2, cdm) in enumerate(zip(sem1, sem2, change_mask)):
+                cdm = np.array(cdm, np.uint8)
+                if np.max(cdm) == np.min(cdm):
+                    continue
+                flag_local = (gt[idx] - cdm)
+                cdm[flag_local == -1] = 2
+                cdm[flag_local == 1] = 3
+                name = file[idx]
+                cdm = change_color[cdm]
+                is1 = label_info[is1]
+                is2 = label_info[is2]
+                io.imsave(f"{img_dir}/{name}", np.uint8(cdm))
+                fa = name.replace(".", "_A.")
+                fb = name.replace(".", "_B.")
+                io.imsave(f"{img_dir}/{fa}", np.uint8(is1))
+                io.imsave(f"{img_dir}/{fb}", np.uint8(is2))
+
+
+    evaluator.get_hist(save_path=f"{img_dir}/hist.csv")
+
+    metrics = evaluator.Get_Metric()
+    evaluator.reset()
+
+    infor = "[EVAL] Images: {} batch_cost {:.4f}, reader_cost {:.4f}".format(test_num, batch_cost, reader_cost)
+    logger.info(infor)
+    logger.info("[METRICS] MIoU:{:.4}, Kappa:{:.4}, F1:{:.4}, Sek:{:.4}".format(
+            metrics['miou'],metrics['kappa'],metrics['f1'],metrics['sek']))
+    logger.info("[METRICS] PA:{:.4}, Prec.:{:.4}, Recall:{:.4}".format(
+            metrics['pa'],metrics['prec'],metrics['recall']))
+    
+    
+    _, c, h, w = img1.shape
+    flop_p = flops(
+    model, [1, c, h, w], 2,
+    custom_ops={paddle.nn.SyncBatchNorm: op_flops_funs.count_syncbn})
+    logger.info(r"[PREDICT] model total flops is: {}, params is {}".format(flop_p["total_ops"],flop_p["total_params"]))  
 
 
 def test(model, test_loader, args):
@@ -58,7 +165,7 @@ def test(model, test_loader, args):
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
 
-    color_label = args.label_info
+    change_color = np.array([[0,0,0],[255,255,255],[0,128,0],[0,0,128]])
 
     logger = load_logger(f"{img_dir}/prediction.log")
     logger.info(f"test {args.dataset} on {args.model}")
@@ -89,7 +196,7 @@ def test(model, test_loader, args):
 
             change_mask = F.sigmoid(cd).cpu().detach()>0.5 #paddle.argmax(cd, axis=1)
             change_mask = change_mask.squeeze()
-            
+            change_mask = change_mask.cast('int64')
             sem1 = paddle.argmax(sem1, axis=1)
             sem2 = paddle.argmax(sem2, axis=1)
 
@@ -98,20 +205,23 @@ def test(model, test_loader, args):
             
             evaluator.add_batch(sem1, gt1)
             evaluator.add_batch(sem2, gt2)
-
+            gt = np.array(gt, np.int8)
             for idx, (is1, is2, cdm) in enumerate(zip(sem1, sem2, change_mask)):
-                cdm = np.array(cdm, np.int8)
+                cdm = np.array(cdm, np.uint8)
                 if np.max(cdm) == np.min(cdm):
                     continue
                 flag_local = (gt[idx] - cdm)
                 cdm[flag_local == -1] = 2
                 cdm[flag_local == 1] = 3
                 name = file[idx]
-                cv2.imwrite(f"{img_dir}/{name}", cdm)
+                cdm = change_color[cdm]
+                is1 = args.label_info[is1]
+                is2 = args.label_info[is2]
+                io.imsave(f"{img_dir}/{name}", np.uint8(cdm))
                 fa = name.replace(".", "_A.")
                 fb = name.replace(".", "_B.")
-                cv2.imwrite(f"{img_dir}/{fa}", is1)
-                cv2.imwrite(f"{img_dir}/{fb}", is2)
+                io.imsave(f"{img_dir}/{fa}", np.uint8(is1))
+                io.imsave(f"{img_dir}/{fb}", np.uint8(is2))
 
     evaluator.get_hist(save_path=f"{img_dir}/hist.csv")
 

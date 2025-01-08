@@ -1,35 +1,43 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
+import random
+import os
+import numpy as np
 import paddle
-from tool.cdloader import TestReader
-from work.predict import predict
-from models.samcd import MobileSamCD
+import logging
+import argparse
+
+from cd_models.fccdn import FCCDN
+from cd_models.stanet import STANet
+from cd_models.p2v import P2V
+from cd_models.msfgnet import MSFGNet
+from cd_models.fc_siam_conc import FCSiamConc
+from cd_models.dsamnet import DSAMNet
+from cd_models.snunet import SNUNet
+from cd_models.f3net import F3Net
+from paddleseg.models import UNet
+from cd_models.replkcd import CD_RLKNet
+
+from models.model import SCDSam, SCDSamV1, SCDSam_Mamba, SCDSam_Mambav1
+
+from core.datasets.scdloader import MusReader
+from core.scdmisc.predict import predict
 
 
-dataset_name = "LEVIR_CD"
-# dataset_name = "GVLM_CD"
-# dataset_name = "CLCD"
-# dataset_name = "SYSU_CD"
-dataset_name = "WHU_BCD"
+dataset_name = "MusSCD"
+
+
 dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
-num_classes = 2
-datatest = TestReader(dataset_path,"test",en_concat=True)
 
-model = MobileSamCD(img_size=512)
+pil_logger = logging.getLogger('PIL')
+pil_logger.setLevel(logging.INFO)
+
+    
+if __name__ == "__main__":
+    print("main")
+    
+    dataset = MusReader(dataset_path, mode='val')
+    model = SCDSam(256, 5)
+    weight_path = r"/home/jq/Code/paddle/output/musscd/SCDSam_2024_12_05_12/last_model.pdparams"
+    predict(model, dataset, weight_path, dataset_name, 5)
+    
 
 
-weight_path = r"/home/jq/Code/paddle/output/whu_bcd/SNUNet_2024_06_30_00/SNUNet_best.pdparams"
-predict(model, datatest,weight_path, dataset_name)

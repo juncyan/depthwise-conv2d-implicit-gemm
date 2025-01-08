@@ -16,9 +16,9 @@ from cd_models.f3net import F3Net
 from paddleseg.models import UNet
 from cd_models.replkcd import CD_RLKNet
 
-from models.model import SCDSam, SCDSamV1, SCDSam_Mamba
+from models.model import SCDSam_Mamba
 
-
+# from core.scdwork import Work
 from core.scdwork import Work
 
 
@@ -44,8 +44,8 @@ dataset_path = '/mnt/data/Datasets/{}'.format(dataset_name)
 # model = P2V(3,2)
 # model = FCCDN(3,2)
 # model = FCSiamConc(3,2)
-pil_logger = logging.getLogger('PIL')
-pil_logger.setLevel(logging.INFO)
+# pil_logger = logging.getLogger('PIL')
+# pil_logger.setLevel(logging.INFO)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Semantic Segmentation Overfitting Test')
@@ -54,7 +54,7 @@ def parse_args():
                         help='model name (default: msfgnet)')
     parser.add_argument('--root', type=str, default='./output',
                         help='run save dir (default: ./output)')
-    parser.add_argument('--img_size', type=int, default=512,
+    parser.add_argument('--img_size', type=int, default=256,
                         help='input image size (default: 256)')
     parser.add_argument('--device', type=str, default='gpu:0',
                         choices=['gpu:0', 'gpu:1', 'cpu'],
@@ -67,7 +67,7 @@ def parse_args():
                         help='img_ab_concat False')
     parser.add_argument('--en_load_edge', type=bool, default=False,
                         help='en_load_edge False')
-    parser.add_argument('--num_classes', type=int, default=7,
+    parser.add_argument('--num_classes', type=int, default=5,
                         help='num classes (default: 2)')
     parser.add_argument('--batch_size', type=int, default=8,
                         help='batch_size (default: 4)')

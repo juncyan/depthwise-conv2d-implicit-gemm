@@ -1,5 +1,7 @@
 # Efficient Implementation Depthwise Convolution with large kernels
 
+Here is the PaddlePaddle version of the depthwise conv2d implicit gemm, based on the PyTorch. PyTorch version at https://github.com/MegEngine/cutlass.git /example/19
+
 ## Installation
 We can easily install the toolkit:
 ```bash
